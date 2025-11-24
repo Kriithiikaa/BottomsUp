@@ -1,0 +1,173 @@
+//all the events data from the homepage - connected to swipeable cards
+
+export type Event = {
+  id: string;
+  title: string;
+  image: string;
+  category: string;
+  date?: string;
+  location?: string;
+};
+
+export const EVENTS: Event[] = [
+  {
+    id: "1",
+    title: "African Textile Display",
+    image: "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2b/ee/d8/71/treasures-from-the-albert.jpg?w=700&h=400&s=1",
+    category: "Art",
+    date: "2025-12-05",
+    location: "George Washington University",
+  },
+  {
+    id: "2",
+    title: "Intercollege Basketball",
+    image: "https://hubison.com/images/2025/11/11/11112025_HU_WBB_vs_GWU_1814.JPG",
+    category: "Sports",
+    date: "2025-11-25",
+    location: "Smith's Center",
+  },
+  {
+    id: "3",
+    title: "Underground Donut Tour",
+    image: "https://media-cdn.tripadvisor.com/media/attractions-splice-spp-720x480/0f/e4/93/89.jpg",
+    category: "Food",
+    date: "2026-01-10",
+    location: "Shenkman Hall",
+  },
+  {
+    id: "4",
+    title: "University Orchestra",
+    image: "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F832286199%2F127240360083%2F1%2Foriginal.20240822-143403?w=940&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C263%2C1920%2C960&s=b4b67ebf685a3f4c947e74419c338614",
+    category: "Music",
+    date: "2025-12-20",
+    location: "Lisner Auditorium",
+  },
+  {
+    id: "5",
+    title: "Campus Scavenger Hunt",
+    image: "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F901647713%2F313035400695%2F1%2Foriginal.20241118-215959?crop=focalpoint&fit=crop&w=940&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=2ce0077279b25b8de8033a4464ffd1df",
+    category: "Community",
+    date: "2025-11-21",
+    location: "George Washington University",
+  },
+  {
+    id: "6",
+    title: "Cupcakes Picnic",
+    image: "https://peasandcrayons.com/wp-content/uploads/2024/01/pink-cake-mix-mini-vanilla-cupcakes-recipe-2-480x270.jpg",
+    category: "Food",
+    date: "2025-11-30",
+    location: "Georgetown",
+  },
+  {
+    id: "7",
+    title: "Campus Sustainability Fair",
+    image: "https://www.csus.edu/news/newsroom/stories/2023/4/images/sac_state_earth_day_20230420_0212_bt.jpg",
+    category: "Campus",
+    date: "2025-12-02",
+    location: "University Student Center",
+  },
+  {
+    id: "8",
+    title: "Student Football Finals",
+    image: "https://picsum.photos/seed/event-8/600/400",
+    category: "Sports",
+    date: "2025-12-10",
+    location: "Athletics Field",
+  },
+  {
+    id: "9",
+    title: "Indie Bands Showcase",
+    image: "https://media.gq-magazine.co.uk/photos/6629390700f1549c4db74c52/16:9/w_2560%2Cc_limit/Indie_albums_HP.jpg",
+    category: "Music",
+    date: "2025-12-15",
+    location: "Corcorran Hall",
+  },
+  {
+    id: "10",
+    title: "FightClub Film Screening",
+    image: "https://m.media-amazon.com/images/I/71QPnEkXygS._AC_UF1000,1000_QL80_.jpg",
+    category: "Community",
+    date: "2025-11-28",
+    location: "University Student Center",
+  },
+  {
+    id: "11",
+    title: "Morning Yoga",
+    image: "https://theyogahub.ie/wp-content/uploads/2017/11/Yoga-shutterstock_126464135.jpg",
+    category: "Community",
+    date: "2025-11-20",
+    location: "LadyBird Johnson Park",
+  },
+  {
+    id: "12",
+    title: "Chess Tournament",
+    image: "https://thumbs.dreamstime.com/b/foggy-chess-king-surrounded-mist-mysterious-dramatic-atmosphere-mysterious-dramatic-shot-foggy-chess-king-374517645.jpg",
+    category: "Sports",
+    date: "2025-12-01",
+    location: "15 Dupont Cir NW",
+  },
+  {
+    id: "13",
+    title: "Clay Workshop",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTG86tP9PYz4Nye2j9LfucryP6BxDmrBRvn2Q&s",
+    category: "Art",
+    date: "2025-12-08",
+    location: "3121 Blues Alley",
+  },
+  {
+    id: "14",
+    title: "Multi-Cultural Night",
+    image: "https://www.pcc.edu/news/wp-content/uploads/sites/33/2018/04/MulticulturalNight1.jpg",
+    category: "Community",
+    date: "2025-12-12",
+    location: "University Student Center",
+  },
+  {
+    id: "15",
+    title: "Charity Run",
+    image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmU8s2IAPW2kVXlukZucJDUSfdbUNQhE-2oQ&s",
+    category: "Sports",
+    date: "2025-11-22",
+    location: "Washington Monument",
+  },
+  {
+    id: "16",
+    title: "Outdoor Guitar",
+    image: "https://internationalguitarnight.com/wp-content/uploads/2020/05/ign2021_icon1.jpg",
+    category: "Music",
+    date: "2025-12-18",
+    location: "Kogan Plaza",
+  },
+  {
+    id: "17",
+    title: "Book Fair",
+    image: "https://accidentallywesanderson.com/wp-content/uploads/2021/03/DSC_4787-scaled.jpg",
+    category: "Campus",
+    date: "2025-11-27",
+    location: "Georgetown",
+  },
+  {
+    id: "18",
+    title: "Sand Volleyball",
+    image: "https://streamline.imgix.net/5ecad171-c860-40b7-b4da-3cc65377bc89/68041773-6a7c-4bf1-8b33-ac66ac43257b/Untitled%20design%20(7).png?ixlib=rb-1.1.0&w=2000&h=2000&fit=max&or=0&s=763d9b9577dfc95515227b1de578cf7f",
+    category: "Sports",
+    date: "2025-11-24",
+    location: "Athletics Field",
+  },
+  {
+    id: "19",
+    title: "Desserts Tasting",
+    image: "https://dancearoundthekitchen.com/wp-content/uploads/2024/04/DSC_1435.jpg",
+    category: "Food",
+    date: "2025-12-03",
+    location: "Thurston Dining Hall",
+  },
+  {
+    id: "20",
+    title: "Student Science Fair",
+    image: "https://study.com/cimages/multimages/16/science_fair.png",
+    category: "Campus",
+    date: "2026-01-05",
+    location: "Univeristy Student Center",
+  },
+];
