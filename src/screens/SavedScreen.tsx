@@ -1,58 +1,78 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList } from 'react-native';
-import FeedItem from '../features/FeedItem';
-import { getSavedEvents, SavedEvent, subscribeSavedEvents } from '../constants/storage';
+import React from "react";
+import { View, Text, ScrollView, StyleSheet } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useSavedEvents } from "../context/SavedEventsContext";
+import EventCard from "../components/EventCard";
 
 export default function SavedScreen() {
-  const [items, setItems] = useState<SavedEvent[]>([]);
-
-  useEffect(() => {
-    let mounted = true;
-
-    const loadSaved = async () => {
-      const list = await getSavedEvents();
-      if (mounted) setItems(list);
-    };
-
-    loadSaved();
-    const unsubscribe = subscribeSavedEvents((list) => {
-      if (mounted) setItems(list);
-    });
-
-    return () => {
-      mounted = false;
-      unsubscribe();
-    };
-  }, []);
+  const { savedEvents } = useSavedEvents();
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.header}>Saved Events</Text>
-      <FlatList
-        data={items}
-        keyExtractor={(i) => i.id}
-        renderItem={({ item }) => (
-          <FeedItem
-            id={item.id}
-            title={item.title || ''}
-            subtitle={item.subtitle}
-            location={item.location}
-            image={item.image}
-            onPress={() => {}}
-            onShare={() => {}}
-            saved
-          />
+    <SafeAreaView style={styles.safeContainer}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
+        <Text style={styles.header}>Saved Events</Text>
+
+        {savedEvents.length === 0 ? (
+          <Text style={styles.emptyText}>
+            You haven't saved any events yet — swipe right to save!
+          </Text>
+        ) : (
+          savedEvents.map((event) => (
+            <View key={event.id} style={styles.cardWrapper}>
+              {/* ⭐ Scale card down ONLY here */}
+              <View style={styles.scaledCard}>
+                <EventCard event={event} onSave={() => {}} onSkip={() => {}} />
+              </View>
+            </View>
+          ))
         )}
-        ListEmptyComponent={() => <Text style={styles.empty}>No saved events yet.</Text>}
-        contentContainerStyle={items.length === 0 ? styles.emptyWrap : undefined}
-      />
-    </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, paddingTop: 80, backgroundColor: '#f6f7f9' },
-  header: { fontSize: 20, fontWeight: '700', paddingHorizontal: 16, marginBottom: 8 },
-  empty: { textAlign: 'center', marginTop: 40, color: '#666' },
-  emptyWrap: { flex: 1 },
+  safeContainer: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  container: {
+    flex: 1,
+    backgroundColor: "#fff",
+  },
+  content: {
+    paddingHorizontal: 20,
+    paddingTop: 20, // fixes title being under dynamic island
+    paddingBottom: 80,
+  },
+  header: {
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 20,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: "#777",
+    marginTop: 10,
+  },
+
+  /* 🟦 CARD WRAPPER */
+  cardWrapper: {
+    width: "100%",
+    marginBottom: 20,
+    alignSelf: "center",
+  },
+
+  /* 🟩 SCALE EVENTCARD — ONLY HERE */
+  scaledCard: {
+    transform: [{ scale: 0.88 }], // ⭐ make card smaller
+    width: "100%",
+    alignSelf: "center",
+
+    // tighten spacing
+    marginBottom: -10,
+  },
 });
