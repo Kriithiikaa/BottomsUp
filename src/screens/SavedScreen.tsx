@@ -5,7 +5,6 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedEvents } from "../context/SavedEventsContext";
@@ -13,33 +12,20 @@ import { useSavedEvents } from "../context/SavedEventsContext";
 export default function SavedScreen() {
   const { savedEvents } = useSavedEvents();
 
-  /* -----------------------------------------------------------
-     FILTER STATE
-  ----------------------------------------------------------- */
   const [filter, setFilter] = useState<"all" | "rsvped" | "past">("all");
 
-  /* -----------------------------------------------------------
-     DATE HELPERS
-  ----------------------------------------------------------- */
   const TODAY = new Date("Dec 2, 2025");
-
   const parseDate = (d: string) => new Date(d);
 
-  /* -----------------------------------------------------------
-     FILTERED LIST (logic will expand later)
-  ----------------------------------------------------------- */
   const filteredList = useMemo(() => {
     if (filter === "all") return savedEvents;
-    if (filter === "rsvped") return []; // will add later
+    if (filter === "rsvped") return [];
     if (filter === "past") {
       return savedEvents.filter((ev) => parseDate(ev.date) < TODAY);
     }
     return savedEvents;
   }, [filter, savedEvents]);
 
-  /* -----------------------------------------------------------
-     SUMMARY STATS
-  ----------------------------------------------------------- */
   const savedCount = savedEvents.length;
   const rsvpCount = 0;
   const todayCount = savedEvents.filter(
@@ -52,32 +38,25 @@ export default function SavedScreen() {
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        {/* TITLE */}
         <Text style={styles.header}>Saved Events</Text>
 
-        {/* -----------------------------------------------------------
-           SUMMARY BOXES
-        ----------------------------------------------------------- */}
+        {/* SUMMARY BOXES */}
         <View style={styles.statsRow}>
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>{rsvpCount}</Text>
             <Text style={styles.statLabel}>RSVPed</Text>
           </View>
-
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>{savedCount}</Text>
             <Text style={styles.statLabel}>Saved</Text>
           </View>
-
           <View style={styles.statBox}>
             <Text style={styles.statNumber}>{todayCount}</Text>
             <Text style={styles.statLabel}>Today</Text>
           </View>
         </View>
 
-        {/* -----------------------------------------------------------
-           FILTER BUTTONS
-        ----------------------------------------------------------- */}
+        {/* FILTERS */}
         <View style={styles.filterRow}>
           <TouchableOpacity
             onPress={() => setFilter("all")}
@@ -131,30 +110,25 @@ export default function SavedScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* -----------------------------------------------------------
-           EVENTS LIST (COMPACT STYLE)
-        ----------------------------------------------------------- */}
+        {/* EVENT LIST — NO IMAGE */}
         {filteredList.length === 0 ? (
           <Text style={styles.emptyText}>No events available.</Text>
         ) : (
           filteredList.map((event, index) => (
             <View key={index} style={styles.savedItem}>
-              {/* Thumbnail */}
-              {event.image ? (
-                <Image source={{ uri: event.image }} style={styles.thumbnail} />
-              ) : (
-                <View style={[styles.thumbnail, styles.thumbnailPlaceholder]} />
-              )}
-
-              {/* Info */}
-              <View style={styles.infoContainer}>
+              {/* TOP ROW — TITLE + LIVE TAG */}
+              <View style={styles.titleRow}>
                 <Text style={styles.title}>{event.title}</Text>
-                <Text style={styles.time}>{event.time}</Text>
-                <Text style={styles.location}>{event.location}</Text>
+                {event.live && <Text style={styles.liveTag}>LIVE</Text>}
               </View>
 
-              {/* LIVE Tag */}
-              {event.live && <Text style={styles.liveTag}>LIVE</Text>}
+              <Text style={styles.time}>{event.time}</Text>
+              <Text style={styles.location}>{event.location}</Text>
+
+              {/* RSVP BUTTON */}
+              <TouchableOpacity style={styles.rsvpButton}>
+                <Text style={styles.rsvpText}>RSVP</Text>
+              </TouchableOpacity>
             </View>
           ))
         )}
@@ -166,6 +140,7 @@ export default function SavedScreen() {
 /* -----------------------------------------------------------
    STYLES
 ----------------------------------------------------------- */
+
 const styles = StyleSheet.create({
   safeContainer: { flex: 1, backgroundColor: "#fff" },
   container: { flex: 1 },
@@ -231,7 +206,6 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  /* EMPTY */
   emptyText: {
     marginTop: 40,
     textAlign: "center",
@@ -239,42 +213,31 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
 
-  /* -----------------------------------------------------------
-     COMPACT SAVED EVENT ITEM
-  ----------------------------------------------------------- */
+  /* EVENT CARD — NO IMAGE */
   savedItem: {
-    flexDirection: "row",
     backgroundColor: "#fff",
-    padding: 14,
+    padding: 16,
     borderRadius: 16,
-    alignItems: "center",
-    marginBottom: 16,
+    marginBottom: 18,
     shadowColor: "#000",
     shadowOpacity: 0.06,
     shadowRadius: 6,
     elevation: 2,
   },
 
-  thumbnail: {
-    width: 60,
-    height: 60,
-    borderRadius: 12,
-    marginRight: 14,
-  },
-
-  thumbnailPlaceholder: {
-    backgroundColor: "#ddd",
-  },
-
-  infoContainer: {
-    flex: 1,
+  /* Title + LIVE on same row */
+  titleRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 6,
   },
 
   title: {
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 16,
+    fontWeight: "700",
     color: "#111",
-    marginBottom: 2,
+    flexShrink: 1,
   },
 
   time: {
@@ -285,18 +248,36 @@ const styles = StyleSheet.create({
   location: {
     fontSize: 12,
     color: "#888",
-    marginTop: 2,
+    marginBottom: 10,
+  },
+
+  /* RSVP BUTTON */
+  rsvpButton: {
+    marginTop: 4,
+    backgroundColor: "#000",
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    alignSelf: "flex-start",
+    minWidth: 150,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  rsvpText: {
+    color: "#fff",
+    fontWeight: "700",
+    fontSize: 14,
   },
 
   liveTag: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "700",
     backgroundColor: "#FF3B30",
     color: "#fff",
-    paddingHorizontal: 8,
+    paddingHorizontal: 10,
     paddingVertical: 4,
-    borderRadius: 8,
-    marginLeft: 10,
+    borderRadius: 10,
   },
 });
 
