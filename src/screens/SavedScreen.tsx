@@ -5,10 +5,10 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Image,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedEvents } from "../context/SavedEventsContext";
-import EventCard from "../components/EventCard";
 
 export default function SavedScreen() {
   const { savedEvents } = useSavedEvents();
@@ -30,7 +30,7 @@ export default function SavedScreen() {
   ----------------------------------------------------------- */
   const filteredList = useMemo(() => {
     if (filter === "all") return savedEvents;
-    if (filter === "rsvped") return []; // 👉 will implement later
+    if (filter === "rsvped") return []; // will add later
     if (filter === "past") {
       return savedEvents.filter((ev) => parseDate(ev.date) < TODAY);
     }
@@ -38,10 +38,10 @@ export default function SavedScreen() {
   }, [filter, savedEvents]);
 
   /* -----------------------------------------------------------
-     SUMMARY STATS (logic will expand)
+     SUMMARY STATS
   ----------------------------------------------------------- */
   const savedCount = savedEvents.length;
-  const rsvpCount = 0; // 👉 to implement
+  const rsvpCount = 0;
   const todayCount = savedEvents.filter(
     (ev) => parseDate(ev.date).toDateString() === TODAY.toDateString()
   ).length;
@@ -132,16 +132,29 @@ export default function SavedScreen() {
         </View>
 
         {/* -----------------------------------------------------------
-           EVENTS LIST
+           EVENTS LIST (COMPACT STYLE)
         ----------------------------------------------------------- */}
         {filteredList.length === 0 ? (
           <Text style={styles.emptyText}>No events available.</Text>
         ) : (
-          filteredList.map((event) => (
-            <View key={event.id} style={styles.cardWrapper}>
-              <View style={styles.listCard}>
-                <EventCard event={event} onSave={() => {}} onSkip={() => {}} />
+          filteredList.map((event, index) => (
+            <View key={index} style={styles.savedItem}>
+              {/* Thumbnail */}
+              {event.image ? (
+                <Image source={{ uri: event.image }} style={styles.thumbnail} />
+              ) : (
+                <View style={[styles.thumbnail, styles.thumbnailPlaceholder]} />
+              )}
+
+              {/* Info */}
+              <View style={styles.infoContainer}>
+                <Text style={styles.title}>{event.title}</Text>
+                <Text style={styles.time}>{event.time}</Text>
+                <Text style={styles.location}>{event.location}</Text>
               </View>
+
+              {/* LIVE Tag */}
+              {event.live && <Text style={styles.liveTag}>LIVE</Text>}
             </View>
           ))
         )}
@@ -218,21 +231,72 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  /* EVENT LIST */
-  cardWrapper: {
-    width: "100%",
-    marginBottom: 16,
-  },
-
-  listCard: {
-    transform: [{ scale: 0.92 }], // makes card smaller for list view
-  },
-
+  /* EMPTY */
   emptyText: {
     marginTop: 40,
     textAlign: "center",
     color: "#777",
     fontSize: 16,
+  },
+
+  /* -----------------------------------------------------------
+     COMPACT SAVED EVENT ITEM
+  ----------------------------------------------------------- */
+  savedItem: {
+    flexDirection: "row",
+    backgroundColor: "#fff",
+    padding: 14,
+    borderRadius: 16,
+    alignItems: "center",
+    marginBottom: 16,
+    shadowColor: "#000",
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+
+  thumbnail: {
+    width: 60,
+    height: 60,
+    borderRadius: 12,
+    marginRight: 14,
+  },
+
+  thumbnailPlaceholder: {
+    backgroundColor: "#ddd",
+  },
+
+  infoContainer: {
+    flex: 1,
+  },
+
+  title: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#111",
+    marginBottom: 2,
+  },
+
+  time: {
+    fontSize: 13,
+    color: "#666",
+  },
+
+  location: {
+    fontSize: 12,
+    color: "#888",
+    marginTop: 2,
+  },
+
+  liveTag: {
+    fontSize: 11,
+    fontWeight: "700",
+    backgroundColor: "#FF3B30",
+    color: "#fff",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginLeft: 10,
   },
 });
 

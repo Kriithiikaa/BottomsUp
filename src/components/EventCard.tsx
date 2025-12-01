@@ -124,14 +124,14 @@ const styles = StyleSheet.create({
   },
 
   liveTag: {
-    backgroundColor: "#f2f2f2",
+    backgroundColor: "#FF3B30",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 12,
   },
 
   liveText: {
-    color: "#444",
+    color: "#FFF",
     fontSize: 11,
     fontWeight: "600",
   },
