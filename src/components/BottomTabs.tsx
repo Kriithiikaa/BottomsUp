@@ -1,7 +1,13 @@
 // src/components/BottomTabs.tsx
 
 import React from "react";
-import { View, TouchableOpacity, Text, StyleSheet } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  Text,
+  StyleSheet,
+  useColorScheme,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import Icon from "./Icon";
 
@@ -12,6 +18,28 @@ type Props = {
   onPressChat: () => void;
 };
 
+/* -----------------------------------------------------------
+   INLINE THEME (no external file needed)
+------------------------------------------------------------ */
+
+const lightTheme = {
+  cardBackground: "#FFFFFF",
+  textPrimary: "#222",
+  textSecondary: "#777",
+  tabIconActive: "#FF7A30", // citrus orange
+  tabIconInactive: "#A0A0A0",
+  border: "#E5E5E5",
+};
+
+const darkTheme = {
+  cardBackground: "#18181C",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#999",
+  tabIconActive: "#1A73E8", // neon blue
+  tabIconInactive: "#5A5F66",
+  border: "#2A2C30",
+};
+
 export default function BottomTabs({
   activeTab,
   onPressHome,
@@ -19,41 +47,77 @@ export default function BottomTabs({
   onPressChat,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const scheme = useColorScheme();
+  const theme = scheme === "dark" ? darkTheme : lightTheme;
 
   return (
-    <View style={[styles.container, { paddingBottom: insets.bottom || 10 }]}>
+    <View
+      style={[
+        styles.container,
+        {
+          paddingBottom: insets.bottom || 10,
+          backgroundColor: theme.cardBackground,
+          borderTopColor: theme.border,
+        },
+      ]}
+    >
       {/* HOME TAB */}
       <TouchableOpacity style={styles.tab} onPress={onPressHome}>
         <Icon
           name={activeTab === "home" ? "home" : "home-outline"}
-          size={30} // bigger icon
-          color={activeTab === "home" ? "#000" : "#777"}
+          size={30}
+          color={
+            activeTab === "home" ? theme.tabIconActive : theme.tabIconInactive
+          }
         />
-        {activeTab === "home" && <Text style={styles.label}>Home</Text>}
+
+        {activeTab === "home" && (
+          <Text style={[styles.label, { color: theme.tabIconActive }]}>
+            Home
+          </Text>
+        )}
       </TouchableOpacity>
 
       {/* SAVED TAB */}
       <TouchableOpacity style={styles.tab} onPress={onPressSaved}>
         <Icon
           name={activeTab === "saved" ? "bookmark" : "bookmark-outline"}
-          size={30} // bigger icon
-          color={activeTab === "saved" ? "#000" : "#777"}
+          size={30}
+          color={
+            activeTab === "saved" ? theme.tabIconActive : theme.tabIconInactive
+          }
         />
-        {activeTab === "saved" && <Text style={styles.label}>Saved</Text>}
+
+        {activeTab === "saved" && (
+          <Text style={[styles.label, { color: theme.tabIconActive }]}>
+            Saved
+          </Text>
+        )}
       </TouchableOpacity>
 
-      {/* CHAT/GROUPS TAB */}
+      {/* GROUP/CHAT TAB */}
       <TouchableOpacity style={styles.tab} onPress={onPressChat}>
         <Icon
           name={activeTab === "chat" ? "chat" : "chat-outline"}
-          size={30} // bigger icon
-          color={activeTab === "chat" ? "#000" : "#777"}
+          size={30}
+          color={
+            activeTab === "chat" ? theme.tabIconActive : theme.tabIconInactive
+          }
         />
-        {activeTab === "chat" && <Text style={styles.label}>Groups</Text>}
+
+        {activeTab === "chat" && (
+          <Text style={[styles.label, { color: theme.tabIconActive }]}>
+            Groups
+          </Text>
+        )}
       </TouchableOpacity>
     </View>
   );
 }
+
+/* -----------------------------------------------------------
+   STYLES
+------------------------------------------------------------ */
 
 const styles = StyleSheet.create({
   container: {
@@ -61,11 +125,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    height: 78, // slightly taller for bigger icon+label
+    height: 78,
     flexDirection: "row",
-    backgroundColor: "#fff",
     borderTopWidth: 1,
-    borderTopColor: "#eee",
     alignItems: "center",
     justifyContent: "space-around",
     shadowColor: "#000",
@@ -81,9 +143,10 @@ const styles = StyleSheet.create({
   },
 
   label: {
-    fontSize: 13, // bigger label
+    fontSize: 13,
     fontWeight: "700",
-    color: "#000",
     marginTop: 4,
   },
 });
+
+export {};

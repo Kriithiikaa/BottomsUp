@@ -1,5 +1,12 @@
 import React from "react";
-import { View, Text, StyleSheet, Image, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  useColorScheme,
+} from "react-native";
 
 type SimpleEvent = {
   title: string;
@@ -17,9 +24,41 @@ type EventCardProps = {
   onSkip: () => void;
 };
 
+/* -----------------------------------------------------------
+   HYBRID THEME (A + C)
+------------------------------------------------------------ */
+const lightTheme = {
+  background: "#FFFFFF",
+  textPrimary: "#222222",
+  textSecondary: "#555555",
+  tagBackground: "#EEE",
+  tagText: "#444",
+  saveButton: "#FF7A30", // Citrus orange
+  saveText: "#FFFFFF",
+  skipButton: "#F2F2F2",
+  skipText: "#000",
+  liveTag: "#FF3B30",
+};
+
+const darkTheme = {
+  background: "#18181C",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#B5B5B8",
+  tagBackground: "#22252A",
+  tagText: "#FFFFFF",
+  saveButton: "#1A73E8", // Neon blue
+  saveText: "#FFFFFF",
+  skipButton: "#2A2A2E",
+  skipText: "#FFFFFF",
+  liveTag: "#FF375F",
+};
+
 export default function EventCard({ event, onSave, onSkip }: EventCardProps) {
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === "dark" ? darkTheme : lightTheme;
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { backgroundColor: theme.background }]}>
       {/* IMAGE */}
       <View style={styles.imageWrapper}>
         <Image
@@ -30,9 +69,12 @@ export default function EventCard({ event, onSave, onSkip }: EventCardProps) {
 
       {/* TITLE + LIVE */}
       <View style={styles.titleRow}>
-        <Text style={styles.title}>{event.title}</Text>
+        <Text style={[styles.title, { color: theme.textPrimary }]}>
+          {event.title}
+        </Text>
+
         {event.live && (
-          <View style={styles.liveTag}>
+          <View style={[styles.liveTag, { backgroundColor: theme.liveTag }]}>
             <Text style={styles.liveText}>LIVE</Text>
           </View>
         )}
@@ -41,53 +83,78 @@ export default function EventCard({ event, onSave, onSkip }: EventCardProps) {
       {/* TIME */}
       <View style={styles.infoRow}>
         <Text style={styles.infoEmoji}>⏰</Text>
-        <Text style={styles.infoText}>{event.time}</Text>
+        <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+          {event.time}
+        </Text>
       </View>
 
       {/* LOCATION */}
       <View style={styles.infoRow}>
         <Text style={styles.infoEmoji}>📍</Text>
-        <Text style={styles.infoText}>{event.location}</Text>
+        <Text style={[styles.infoText, { color: theme.textSecondary }]}>
+          {event.location}
+        </Text>
       </View>
 
       {/* TAGS */}
       <View style={styles.tagContainer}>
         {event.tags.map((tag, index) => (
-          <View key={index} style={styles.tag}>
-            <Text style={styles.tagText}>{tag}</Text>
+          <View
+            key={index}
+            style={[styles.tag, { backgroundColor: theme.tagBackground }]}
+          >
+            <Text style={[styles.tagText, { color: theme.tagText }]}>
+              {tag}
+            </Text>
           </View>
         ))}
       </View>
 
       {/* DESCRIPTION */}
-      <Text style={styles.description}>{event.description}</Text>
+      <Text style={[styles.description, { color: theme.textSecondary }]}>
+        {event.description}
+      </Text>
 
       {/* BUTTONS */}
       <View style={styles.buttonRow}>
-        <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
-          <Text style={{ fontSize: 18, marginRight: 4 }}>✖️</Text>
-          <Text style={styles.skipText}>Skip</Text>
+        {/* SKIP */}
+        <TouchableOpacity
+          style={[styles.skipButton, { backgroundColor: theme.skipButton }]}
+          onPress={onSkip}
+        >
+          <Text style={{ fontSize: 18, marginRight: 4, color: theme.skipText }}>
+            ✖️
+          </Text>
+          <Text style={[styles.skipText, { color: theme.skipText }]}>Skip</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.saveButton} onPress={onSave}>
-          <Text style={{ fontSize: 18, marginRight: 4, color: "#fff" }}>
+        {/* SAVE */}
+        <TouchableOpacity
+          style={[styles.saveButton, { backgroundColor: theme.saveButton }]}
+          onPress={onSave}
+        >
+          <Text style={{ fontSize: 18, marginRight: 4, color: theme.saveText }}>
             ✔️
           </Text>
-          <Text style={styles.saveText}>Save</Text>
+          <Text style={[styles.saveText, { color: theme.saveText }]}>Save</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
+/* -----------------------------------------------------------
+   STYLES (STRUCTURE ONLY — colors come from theme)
+------------------------------------------------------------ */
 const styles = StyleSheet.create({
   card: {
     backgroundColor: "#fff",
     borderRadius: 18,
     padding: 12,
-    marginHorizontal: 18,
     marginTop: 12,
     marginBottom: 12,
+    alignSelf: "center",
+    width: "92%",
     shadowColor: "#000",
     shadowOpacity: 0.08,
     shadowRadius: 5,
@@ -99,7 +166,6 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     overflow: "hidden",
     marginBottom: 10,
-    backgroundColor: "#e5e5e5",
     height: 220,
   },
 
@@ -124,7 +190,6 @@ const styles = StyleSheet.create({
   },
 
   liveTag: {
-    backgroundColor: "#FF3B30",
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 12,
@@ -142,14 +207,12 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
 
-  /* NEW EMOJI ICON STYLE */
   infoEmoji: {
     fontSize: 16,
     marginRight: 6,
   },
 
   infoText: {
-    color: "#444",
     fontSize: 13,
   },
 
@@ -160,7 +223,6 @@ const styles = StyleSheet.create({
   },
 
   tag: {
-    backgroundColor: "#eee",
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
@@ -169,12 +231,10 @@ const styles = StyleSheet.create({
   },
 
   tagText: {
-    color: "#444",
     fontSize: 12,
   },
 
   description: {
-    color: "#555",
     fontSize: 13,
     marginVertical: 6,
   },
@@ -187,7 +247,6 @@ const styles = StyleSheet.create({
 
   skipButton: {
     flex: 1,
-    backgroundColor: "#f2f2f2",
     borderRadius: 10,
     paddingVertical: 10,
     marginRight: 8,
@@ -198,7 +257,6 @@ const styles = StyleSheet.create({
 
   saveButton: {
     flex: 1,
-    backgroundColor: "#000",
     borderRadius: 10,
     paddingVertical: 10,
     flexDirection: "row",
@@ -207,16 +265,16 @@ const styles = StyleSheet.create({
   },
 
   skipText: {
-    color: "#000",
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 4,
   },
 
   saveText: {
-    color: "#fff",
     fontSize: 14,
     fontWeight: "600",
     marginLeft: 4,
   },
 });
+
+export {};

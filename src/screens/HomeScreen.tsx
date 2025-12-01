@@ -9,19 +9,66 @@ import {
   Animated,
   Dimensions,
   PanResponder,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EventCard from "../components/EventCard";
-
-// ⭐ NEW: Global saved events system
 import { useSavedEvents } from "../context/SavedEventsContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
 
 /* -----------------------------------------------------------
-   MOCK EVENTS WITH FIXED DATES
+   EVENT TYPE (Fixes TS errors)
 ------------------------------------------------------------ */
-const MOCK_EVENTS = [
+type EventType = {
+  id: string;
+  title: string;
+  date: string;
+  time: string;
+  location: string;
+  tags: string[];
+  description: string;
+  image?: string;
+  live?: boolean;
+};
+
+/* -----------------------------------------------------------
+   HYBRID THEME (A + C)
+------------------------------------------------------------ */
+const lightTheme = {
+  background: "#FAFAFA",
+  cardBackground: "#FFFFFF",
+  primary: "#FF7A30",
+  primaryText: "#FFFFFF",
+  textPrimary: "#222222",
+  textSecondary: "#555555",
+  chipBackground: "#EEEEEE",
+  chipActiveBackground: "#FF7A30",
+  chipText: "#444444",
+  chipTextActive: "#FFFFFF",
+  segmentBackground: "#F0F0F0",
+  overlay: "rgba(0,0,0,0.35)",
+};
+
+const darkTheme = {
+  background: "#0D0D0F",
+  cardBackground: "#18181C",
+  primary: "#1A73E8",
+  primaryText: "#FFFFFF",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#B5B5B8",
+  chipBackground: "#22252A",
+  chipActiveBackground: "#1A73E8",
+  chipText: "#B5B5B8",
+  chipTextActive: "#FFFFFF",
+  segmentBackground: "#18181C",
+  overlay: "rgba(0,0,0,0.55)",
+};
+
+/* -----------------------------------------------------------
+   MOCK EVENTS
+------------------------------------------------------------ */
+const MOCK_EVENTS: EventType[] = [
   {
     id: "1",
     title: "Basketball vs State University",
@@ -80,7 +127,11 @@ const FILTERS = [
    HOMESCREEN COMPONENT
 ------------------------------------------------------------ */
 export default function HomeScreen() {
-  /* ⭐ NEW: Saved events context */
+  /* ⭐ MUST BE FIRST HOOK — fixes hook order errors */
+  const colorScheme = useColorScheme();
+  const theme = colorScheme === "dark" ? darkTheme : lightTheme;
+
+  /* ⭐ SECOND HOOK */
   const { saveEvent } = useSavedEvents();
 
   /* STATE */
@@ -88,7 +139,7 @@ export default function HomeScreen() {
   const [isGroup, setIsGroup] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
 
-  /* DRAWER */
+  /* DRAWER STATE */
   const [menuOpen, setMenuOpen] = useState(false);
   const slideAnim = useRef(new Animated.Value(-SCREEN_WIDTH * 0.5)).current;
 
@@ -109,7 +160,7 @@ export default function HomeScreen() {
     }).start(() => setMenuOpen(false));
   };
 
-  /* SWIPE ANIM */
+  /* SWIPE ANIMATION */
   const swipe = useRef(new Animated.ValueXY()).current;
 
   const rotate = swipe.x.interpolate({
@@ -122,15 +173,10 @@ export default function HomeScreen() {
     transform: [...swipe.getTranslateTransform(), { rotate }],
   };
 
-  /* -----------------------------------------------------------
-     ⭐ UPDATED — SAVE EVENT WHEN SWIPING RIGHT
-  ------------------------------------------------------------ */
+  /* SAVE EVENT ON RIGHT SWIPE */
   const handleSave = () => {
     const event = MOCK_EVENTS[currentIndex];
-    if (event) {
-      saveEvent(event); // 🔥 Add to global saved list
-    }
-
+    if (event) saveEvent(event);
     setCurrentIndex((prev) => (prev + 1 < MOCK_EVENTS.length ? prev + 1 : 0));
   };
 
@@ -139,10 +185,11 @@ export default function HomeScreen() {
   };
 
   const forceSwipe = (direction: "left" | "right") => {
-    const x = direction === "right" ? SCREEN_WIDTH : -SCREEN_WIDTH;
-
     Animated.timing(swipe, {
-      toValue: { x, y: 0 },
+      toValue: {
+        x: direction === "right" ? SCREEN_WIDTH : -SCREEN_WIDTH,
+        y: 0,
+      },
       duration: 220,
       useNativeDriver: false,
     }).start(() => {
@@ -173,7 +220,6 @@ export default function HomeScreen() {
     })
   ).current;
 
-  /* CURRENT + NEXT CARD */
   const currentEvent = MOCK_EVENTS[currentIndex];
   const nextEvent =
     currentIndex + 1 < MOCK_EVENTS.length
@@ -184,45 +230,61 @@ export default function HomeScreen() {
      RENDER
   ------------------------------------------------------------ */
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView
+      style={[styles.container, { backgroundColor: theme.background }]}
+    >
       {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity style={styles.menuButton} onPress={openMenu}>
-          <Text style={{ fontSize: 28 }}>☰</Text>
+          <Text style={[styles.menuIcon, { color: theme.textPrimary }]}>☰</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>Bottoms Up!</Text>
+        <Text style={[styles.title, { color: theme.textPrimary }]}>
+          Bottoms Up!
+        </Text>
 
-        <TouchableOpacity>
-          <Image
-            source={{ uri: "https://i.pravatar.cc/100" }}
-            style={styles.profileImage}
-          />
-        </TouchableOpacity>
+        <Image
+          source={{ uri: "https://i.pravatar.cc/100" }}
+          style={styles.profileImage}
+        />
       </View>
 
-      {/* DRAWER */}
+      {/* SIDE DRAWER */}
       {menuOpen && (
         <TouchableOpacity
-          style={styles.drawerOverlay}
-          activeOpacity={1}
+          style={[styles.drawerOverlay, { backgroundColor: theme.overlay }]}
           onPress={closeMenu}
+          activeOpacity={1}
         >
           <Animated.View
-            style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}
+            style={[
+              styles.drawer,
+              {
+                backgroundColor: theme.cardBackground,
+                transform: [{ translateX: slideAnim }],
+              },
+            ]}
           >
-            <Text style={styles.drawerTitle}>Menu</Text>
+            <Text style={[styles.drawerTitle, { color: theme.textPrimary }]}>
+              Menu
+            </Text>
 
             <TouchableOpacity style={styles.drawerItem}>
-              <Text style={styles.drawerText}>Home</Text>
+              <Text style={[styles.drawerText, { color: theme.textSecondary }]}>
+                Home
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.drawerItem}>
-              <Text style={styles.drawerText}>About</Text>
+              <Text style={[styles.drawerText, { color: theme.textSecondary }]}>
+                About
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.drawerItem}>
-              <Text style={styles.drawerText}>Settings</Text>
+              <Text style={[styles.drawerText, { color: theme.textSecondary }]}>
+                Settings
+              </Text>
             </TouchableOpacity>
           </Animated.View>
         </TouchableOpacity>
@@ -230,17 +292,28 @@ export default function HomeScreen() {
 
       {/* CONTENT */}
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* TOGGLE */}
-        <View style={[styles.segmentContainer, styles.sectionGap]}>
+        {/* MODE TOGGLE */}
+        <View
+          style={[
+            styles.segmentContainer,
+            styles.sectionGap,
+            { backgroundColor: theme.segmentBackground },
+          ]}
+        >
           <TouchableOpacity
             style={[
               styles.segmentButton,
-              isGroup && styles.segmentButtonActive,
+              isGroup && { backgroundColor: theme.primary },
             ]}
             onPress={() => setIsGroup(true)}
           >
             <Text
-              style={[styles.segmentText, isGroup && styles.segmentTextActive]}
+              style={[
+                styles.segmentText,
+                isGroup
+                  ? { color: theme.primaryText }
+                  : { color: theme.textSecondary },
+              ]}
             >
               Group Home
             </Text>
@@ -249,12 +322,17 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[
               styles.segmentButton,
-              !isGroup && styles.segmentButtonActive,
+              !isGroup && { backgroundColor: theme.primary },
             ]}
             onPress={() => setIsGroup(false)}
           >
             <Text
-              style={[styles.segmentText, !isGroup && styles.segmentTextActive]}
+              style={[
+                styles.segmentText,
+                !isGroup
+                  ? { color: theme.primaryText }
+                  : { color: theme.textSecondary },
+              ]}
             >
               Personal Home
             </Text>
@@ -267,31 +345,39 @@ export default function HomeScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={[styles.filterScroll, styles.sectionGap]}
         >
-          {FILTERS.map((item) => (
-            <TouchableOpacity
-              key={item}
-              onPress={() => setSelected(item)}
-              style={[
-                styles.filterChip,
-                selected === item && styles.filterChipActive,
-              ]}
-            >
-              <Text
+          {FILTERS.map((item) => {
+            const isActive = selected === item;
+            return (
+              <TouchableOpacity
+                key={item}
+                onPress={() => setSelected(item)}
                 style={[
-                  styles.filterText,
-                  selected === item && styles.filterTextActive,
+                  styles.filterChip,
+                  {
+                    backgroundColor: isActive
+                      ? theme.chipActiveBackground
+                      : theme.chipBackground,
+                  },
                 ]}
               >
-                {item}
-              </Text>
-            </TouchableOpacity>
-          ))}
+                <Text
+                  style={{
+                    color: isActive ? theme.chipTextActive : theme.chipText,
+                  }}
+                >
+                  {item}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
         </ScrollView>
 
         {/* SECTION TITLE */}
-        <Text style={styles.sectionTitle}>Today’s Events</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+          Today’s Events
+        </Text>
 
-        {/* CARD STACK */}
+        {/* SWIPE DECK */}
         <View style={styles.cardArea}>
           {nextEvent && (
             <View style={styles.nextCard}>
@@ -327,7 +413,6 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#fff",
   },
 
   scrollContent: {
@@ -347,6 +432,10 @@ const styles = StyleSheet.create({
     padding: 4,
   },
 
+  menuIcon: {
+    fontSize: 28,
+  },
+
   title: {
     fontSize: 24,
     fontWeight: "700",
@@ -364,7 +453,6 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.35)",
     zIndex: 100,
   },
 
@@ -374,14 +462,9 @@ const styles = StyleSheet.create({
     left: 0,
     bottom: 0,
     width: SCREEN_WIDTH * 0.5,
-    backgroundColor: "#fff",
     paddingTop: 80,
     paddingHorizontal: 20,
     zIndex: 200,
-    shadowColor: "#000",
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
   },
 
   drawerTitle: {
@@ -406,7 +489,6 @@ const styles = StyleSheet.create({
   segmentContainer: {
     flexDirection: "row",
     alignSelf: "center",
-    backgroundColor: "#f0f0f0",
     padding: 4,
     borderRadius: 20,
   },
@@ -417,30 +499,18 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
 
-  segmentButtonActive: {
-    backgroundColor: "#000",
-  },
-
   segmentText: {
     fontSize: 13,
-    color: "#555",
-    fontWeight: "500",
-  },
-
-  segmentTextActive: {
-    color: "#fff",
-    fontWeight: "700",
+    fontWeight: "600",
   },
 
   filterScroll: {
     flexDirection: "row",
-    alignItems: "center",
     paddingHorizontal: 15,
     height: 40,
   },
 
   filterChip: {
-    backgroundColor: "#eee",
     paddingHorizontal: 10,
     borderRadius: 16,
     marginRight: 8,
@@ -449,27 +519,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 
-  filterChipActive: {
-    backgroundColor: "#000",
-  },
-
-  filterText: {
-    color: "#444",
-    fontSize: 12,
-    fontWeight: "500",
-  },
-
-  filterTextActive: {
-    color: "#fff",
-    fontSize: 12,
-    fontWeight: "700",
-  },
-
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     marginLeft: 18,
-    marginBottom: 6,
+    marginBottom: 30,
     marginTop: 6,
   },
 
@@ -477,6 +531,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     minHeight: 420,
     justifyContent: "center",
+    paddingHorizontal: 0, // ❗ remove squeeze
   },
 
   topCard: {
@@ -491,3 +546,5 @@ const styles = StyleSheet.create({
     transform: [{ scale: 0.95 }],
   },
 });
+
+export {};

@@ -11,15 +11,16 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedEvents } from "../context/SavedEventsContext";
 
 export default function SavedScreen() {
-  const { savedEvents, rsvpedEvents, rsvpEvent } = useSavedEvents();
+  const { savedEvents, rsvpedEvents, rsvpEvent, unRsvpEvent } =
+    useSavedEvents();
 
   const [filter, setFilter] = useState<"all" | "rsvped" | "past">("all");
 
-  // Toast overlay animation
+  // Toast fade + slide animation
   const [toast, setToast] = useState("");
   const toastOpacity = useState(new Animated.Value(0))[0];
+  const toastTranslate = useState(new Animated.Value(20))[0]; // slide-up effect
 
-  // Fixed date for now
   const TODAY = new Date("Dec 2, 2025");
   const parseDate = (d: string) => new Date(d);
 
@@ -40,7 +41,6 @@ export default function SavedScreen() {
   ----------------------------------------------------------- */
   const savedCount = savedEvents.length;
   const rsvpCount = rsvpedEvents.length;
-
   const todayCount = savedEvents.filter(
     (ev) => parseDate(ev.date).toDateString() === TODAY.toDateString()
   ).length;
@@ -51,17 +51,31 @@ export default function SavedScreen() {
   const showToast = (msg: string) => {
     setToast(msg);
 
-    Animated.timing(toastOpacity, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start(() => {
+    Animated.parallel([
+      Animated.timing(toastOpacity, {
+        toValue: 1,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(toastTranslate, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
       setTimeout(() => {
-        Animated.timing(toastOpacity, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }).start();
+        Animated.parallel([
+          Animated.timing(toastOpacity, {
+            toValue: 0,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+          Animated.timing(toastTranslate, {
+            toValue: 20,
+            duration: 250,
+            useNativeDriver: true,
+          }),
+        ]).start();
       }, 1200);
     });
   };
@@ -72,6 +86,7 @@ export default function SavedScreen() {
         style={styles.container}
         contentContainerStyle={styles.content}
       >
+        {/* TITLE */}
         <Text style={styles.header}>Saved Events</Text>
 
         {/* -----------------------------------------------------------
@@ -144,7 +159,9 @@ export default function SavedScreen() {
                 <Text style={styles.time}>{event.time}</Text>
                 <Text style={styles.location}>{event.location}</Text>
 
-                {/* RSVP BUTTON */}
+                {/* -----------------------------------------------------------
+                   RSVP BUTTON (with tick + toggle)
+                ----------------------------------------------------------- */}
                 <TouchableOpacity
                   style={[
                     styles.rsvpButton,
@@ -154,14 +171,19 @@ export default function SavedScreen() {
                     if (!isRSVPed) {
                       rsvpEvent(event);
                       showToast("RSVP sent");
+                    } else {
+                      unRsvpEvent(event.id);
+                      showToast("RSVP removed");
                     }
                   }}
                 >
-                  <Text
-                    style={[styles.rsvpText, isRSVPed && styles.rsvpTextActive]}
-                  >
-                    {isRSVPed ? "RSVP’d ✓" : "RSVP"}
-                  </Text>
+                  {isRSVPed ? (
+                    <Text style={[styles.rsvpText, styles.rsvpTextActive]}>
+                      RSVP’d <Text style={styles.tickIcon}>✓</Text>
+                    </Text>
+                  ) : (
+                    <Text style={styles.rsvpText}>RSVP</Text>
+                  )}
                 </TouchableOpacity>
               </View>
             );
@@ -170,9 +192,17 @@ export default function SavedScreen() {
       </ScrollView>
 
       {/* -----------------------------------------------------------
-         TOAST OVERLAY
+         TOAST (Centered, slide + fade)
       ----------------------------------------------------------- */}
-      <Animated.View style={[styles.toast, { opacity: toastOpacity }]}>
+      <Animated.View
+        style={[
+          styles.toast,
+          {
+            opacity: toastOpacity,
+            transform: [{ translateY: toastTranslate }],
+          },
+        ]}
+      >
         <Text style={styles.toastText}>{toast}</Text>
       </Animated.View>
     </SafeAreaView>
@@ -247,7 +277,7 @@ const styles = StyleSheet.create({
   time: { fontSize: 13, color: "#666" },
   location: { fontSize: 12, color: "#888", marginBottom: 10 },
 
-  /* RSVP BUTTON — FIXED CENTERING */
+  /* RSVP BUTTON */
   rsvpButton: {
     backgroundColor: "#000",
     paddingVertical: 10,
@@ -274,7 +304,12 @@ const styles = StyleSheet.create({
     color: "#fff",
   },
 
-  /* LIVE TAG */
+  tickIcon: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: "#fff",
+  },
+
   liveTag: {
     fontSize: 12,
     fontWeight: "700",
@@ -285,14 +320,14 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
 
-  /* TOAST — CENTERED FIX */
+  /* TOAST */
   toast: {
     position: "absolute",
-    top: "50%", // Center of screen
+    top: "50%",
     left: 0,
     right: 0,
     alignItems: "center",
-    transform: [{ translateY: -30 }], // Small upward shift to look perfect
+    transform: [{ translateY: -30 }],
   },
   toastText: {
     backgroundColor: "#000",
@@ -304,3 +339,5 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
 });
+
+export {};
