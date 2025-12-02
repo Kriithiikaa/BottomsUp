@@ -13,6 +13,8 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import EventCard from "../components/EventCard";
+import AboutScreen from "./AboutScreen";
+import SettingsScreen from "./SettingsScreen";
 import { useSavedEvents } from "../context/SavedEventsContext";
 
 const SCREEN_WIDTH = Dimensions.get("window").width;
@@ -130,7 +132,7 @@ const parseDate = (dateStr: string) => {
   const cleaned = dateStr.replace(",", "");
   const [monthStr, dayStr, yearStr] = cleaned.split(" ");
 
-  const monthMap: Record<string, number> = {
+  const MONTHS: Record<string, number> = {
     Jan: 0,
     Feb: 1,
     Mar: 2,
@@ -145,30 +147,44 @@ const parseDate = (dateStr: string) => {
     Dec: 11,
   };
 
-  return new Date(Number(yearStr), monthMap[monthStr], Number(dayStr));
+  return new Date(Number(yearStr), MONTHS[monthStr], Number(dayStr));
 };
 
 /* -----------------------------------------------------------
    HOMESCREEN
 ------------------------------------------------------------ */
 export default function HomeScreen() {
-  // ⭐ Hook order stays the same
+  // ⭐ FIRST HOOK (must always stay first)
   const colorScheme = useColorScheme();
   const theme = colorScheme === "dark" ? darkTheme : lightTheme;
+
+  // ⭐ SECOND HOOK (must stay after theme)
   const { saveEvent } = useSavedEvents();
 
+  // ⭐ ALL OTHER HOOKS MUST COME AFTER THESE TWO
   const [selected, setSelected] = useState("Today");
   const [isGroup, setIsGroup] = useState(true);
   const [currentIndex, setCurrentIndex] = useState(0);
 
+  // Drawer state
   const [menuOpen, setMenuOpen] = useState(false);
-  const slideAnim = useRef(new Animated.Value(-SCREEN_WIDTH * 0.5)).current;
+  const [activeMenuItem, setActiveMenuItem] = useState<
+    "Home" | "About" | "Settings"
+  >("Home");
 
-  // Overlay feedback text
+  const [activeDrawerScreen, setActiveDrawerScreen] = useState<
+    "Home" | "About" | "Settings"
+  >("Home");
+
+  // Animation refs
+  const slideAnim = useRef(new Animated.Value(-SCREEN_WIDTH * 0.5)).current;
+  const swipe = useRef(new Animated.ValueXY()).current;
   const labelOpacity = useRef(new Animated.Value(0)).current;
   const labelText = useRef<"save" | "skip" | null>(null);
 
-  /* SIDE MENU */
+  /* -----------------------------------------------------------
+     MENU HANDLING
+------------------------------------------------------------ */
   const openMenu = () => {
     setMenuOpen(true);
     Animated.timing(slideAnim, {
@@ -186,35 +202,41 @@ export default function HomeScreen() {
     }).start(() => setMenuOpen(false));
   };
 
-  /* -----------------------------------------------------------
-     FILTER LOGIC
-  ------------------------------------------------------------ */
-  const parsedToday = parseDate("Dec 2, 2025");
-  const parsedTomorrow = parseDate("Dec 3, 2025");
+  const handleMenuSelect = (item: "Home" | "About" | "Settings") => {
+    setActiveMenuItem(item);
+    setActiveDrawerScreen(item);
+    closeMenu();
+  };
 
-  let filteredEvents: EventType[] = [];
+  /* -----------------------------------------------------------
+     FILTERING
+------------------------------------------------------------ */
+  const today = parseDate("Dec 2, 2025");
+  const tomorrow = parseDate("Dec 3, 2025");
+
+  let filteredEvents: EventType[];
 
   if (selected === "Today") {
     filteredEvents = MOCK_EVENTS.filter((e) => {
       const d = parseDate(e.date);
       return (
-        d.getFullYear() === parsedToday.getFullYear() &&
-        d.getMonth() === parsedToday.getMonth() &&
-        d.getDate() === parsedToday.getDate()
+        d.getFullYear() === today.getFullYear() &&
+        d.getMonth() === today.getMonth() &&
+        d.getDate() === today.getDate()
       );
     });
   } else if (selected === "Tomorrow") {
     filteredEvents = MOCK_EVENTS.filter((e) => {
       const d = parseDate(e.date);
       return (
-        d.getFullYear() === parsedTomorrow.getFullYear() &&
-        d.getMonth() === parsedTomorrow.getMonth() &&
-        d.getDate() === parsedTomorrow.getDate()
+        d.getFullYear() === tomorrow.getFullYear() &&
+        d.getMonth() === tomorrow.getMonth() &&
+        d.getDate() === tomorrow.getDate()
       );
     });
   } else {
     filteredEvents = MOCK_EVENTS.filter((e) =>
-      e.tags.some((tag) => tag.toLowerCase() === selected.toLowerCase())
+      e.tags.some((t) => t.toLowerCase() === selected.toLowerCase())
     );
   }
 
@@ -224,8 +246,8 @@ export default function HomeScreen() {
   };
 
   /* -----------------------------------------------------------
-     OVERLAY LABEL ANIMATION
-  ------------------------------------------------------------ */
+     SWIPE FEEDBACK
+------------------------------------------------------------ */
   const triggerOverlayLabel = (type: "save" | "skip") => {
     labelText.current = type;
     labelOpacity.setValue(1);
@@ -240,9 +262,7 @@ export default function HomeScreen() {
 
   /* -----------------------------------------------------------
      SWIPE LOGIC
-  ------------------------------------------------------------ */
-  const swipe = useRef(new Animated.ValueXY()).current;
-
+------------------------------------------------------------ */
   const rotate = swipe.x.interpolate({
     inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
     outputRange: ["-15deg", "0deg", "15deg"],
@@ -253,7 +273,6 @@ export default function HomeScreen() {
     transform: [...swipe.getTranslateTransform(), { rotate }],
   };
 
-  // Live swipe label opacity
   const dynamicOpacitySave = swipe.x.interpolate({
     inputRange: [0, SCREEN_WIDTH / 3],
     outputRange: [0, 1],
@@ -266,37 +285,28 @@ export default function HomeScreen() {
     extrapolate: "clamp",
   });
 
-  /* ACTION HANDLERS */
   const handleSave = () => {
-    const event = filteredEvents[currentIndex];
-    if (event) saveEvent(event);
-
+    const ev = filteredEvents[currentIndex];
+    if (ev) saveEvent(ev);
     triggerOverlayLabel("save");
 
-    setCurrentIndex((prev) =>
-      prev + 1 < filteredEvents.length ? prev + 1 : 0
-    );
+    setCurrentIndex((i) => (i + 1 < filteredEvents.length ? i + 1 : 0));
   };
 
   const handleSkip = () => {
     triggerOverlayLabel("skip");
 
-    setCurrentIndex((prev) =>
-      prev + 1 < filteredEvents.length ? prev + 1 : 0
-    );
+    setCurrentIndex((i) => (i + 1 < filteredEvents.length ? i + 1 : 0));
   };
 
-  const forceSwipe = (direction: "left" | "right") => {
+  const forceSwipe = (dir: "left" | "right") => {
     Animated.timing(swipe, {
-      toValue: {
-        x: direction === "right" ? SCREEN_WIDTH : -SCREEN_WIDTH,
-        y: 0,
-      },
+      toValue: { x: dir === "right" ? SCREEN_WIDTH : -SCREEN_WIDTH, y: 0 },
       duration: 200,
       useNativeDriver: false,
     }).start(() => {
       swipe.setValue({ x: 0, y: 0 });
-      direction === "right" ? handleSave() : handleSkip();
+      dir === "right" ? handleSave() : handleSkip();
     });
   };
 
@@ -310,6 +320,7 @@ export default function HomeScreen() {
 
       onPanResponderRelease: (_, g) => {
         const threshold = 120;
+
         if (g.dx > threshold) return forceSwipe("right");
         if (g.dx < -threshold) return forceSwipe("left");
 
@@ -328,8 +339,22 @@ export default function HomeScreen() {
       : null;
 
   /* -----------------------------------------------------------
+     HEADER TITLE (Hdr2)
+------------------------------------------------------------ */
+  const getHeaderTitle = () => {
+    switch (activeDrawerScreen) {
+      case "About":
+        return "About";
+      case "Settings":
+        return "Settings";
+      default:
+        return "Bottoms Up!";
+    }
+  };
+
+  /* -----------------------------------------------------------
      RENDER
-  ------------------------------------------------------------ */
+------------------------------------------------------------ */
   return (
     <SafeAreaView
       style={[styles.container, { backgroundColor: theme.background }]}
@@ -341,7 +366,7 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <Text style={[styles.title, { color: theme.textPrimary }]}>
-          Bottoms Up!
+          {getHeaderTitle()}
         </Text>
 
         <Image
@@ -370,20 +395,71 @@ export default function HomeScreen() {
               Menu
             </Text>
 
-            <TouchableOpacity style={styles.drawerItem}>
-              <Text style={[styles.drawerText, { color: theme.textSecondary }]}>
+            {/* HOME */}
+            <TouchableOpacity
+              style={[
+                styles.drawerItem,
+                activeMenuItem === "Home" && {
+                  borderLeftWidth: 4,
+                  borderLeftColor: theme.primary,
+                },
+              ]}
+              onPress={() => handleMenuSelect("Home")}
+            >
+              <Text
+                style={[
+                  styles.drawerText,
+                  activeMenuItem === "Home"
+                    ? { color: theme.primary, fontWeight: "700" }
+                    : { color: theme.textSecondary },
+                ]}
+              >
                 Home
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.drawerItem}>
-              <Text style={[styles.drawerText, { color: theme.textSecondary }]}>
+            {/* ABOUT */}
+            <TouchableOpacity
+              style={[
+                styles.drawerItem,
+                activeMenuItem === "About" && {
+                  borderLeftWidth: 4,
+                  borderLeftColor: theme.primary,
+                },
+              ]}
+              onPress={() => handleMenuSelect("About")}
+            >
+              <Text
+                style={[
+                  styles.drawerText,
+                  activeMenuItem === "About"
+                    ? { color: theme.primary, fontWeight: "700" }
+                    : { color: theme.textSecondary },
+                ]}
+              >
                 About
               </Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.drawerItem}>
-              <Text style={[styles.drawerText, { color: theme.textSecondary }]}>
+            {/* SETTINGS */}
+            <TouchableOpacity
+              style={[
+                styles.drawerItem,
+                activeMenuItem === "Settings" && {
+                  borderLeftWidth: 4,
+                  borderLeftColor: theme.primary,
+                },
+              ]}
+              onPress={() => handleMenuSelect("Settings")}
+            >
+              <Text
+                style={[
+                  styles.drawerText,
+                  activeMenuItem === "Settings"
+                    ? { color: theme.primary, fontWeight: "700" }
+                    : { color: theme.textSecondary },
+                ]}
+              >
                 Settings
               </Text>
             </TouchableOpacity>
@@ -391,176 +467,185 @@ export default function HomeScreen() {
         </TouchableOpacity>
       )}
 
-      {/* CONTENT */}
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* MODE TOGGLE */}
-        <View
-          style={[
-            styles.segmentContainer,
-            styles.sectionGap,
-            { backgroundColor: theme.segmentBackground },
-          ]}
-        >
-          <TouchableOpacity
+      {/* -------------------------------------------------------
+         SCREEN SWITCHING (FULL REPLACE - L1)
+         Only ONE of these renders at a time.
+      -------------------------------------------------------- */}
+      {activeDrawerScreen === "Home" && (
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* MODE TOGGLE */}
+          <View
             style={[
-              styles.segmentButton,
-              isGroup && { backgroundColor: theme.primary },
+              styles.segmentContainer,
+              styles.sectionGap,
+              { backgroundColor: theme.segmentBackground },
             ]}
-            onPress={() => setIsGroup(true)}
           >
-            <Text
+            <TouchableOpacity
               style={[
-                styles.segmentText,
-                isGroup
-                  ? { color: theme.primaryText }
-                  : { color: theme.textSecondary },
+                styles.segmentButton,
+                isGroup && { backgroundColor: theme.primary },
               ]}
+              onPress={() => setIsGroup(true)}
             >
-              Group Home
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.segmentButton,
-              !isGroup && { backgroundColor: theme.primary },
-            ]}
-            onPress={() => setIsGroup(false)}
-          >
-            <Text
-              style={[
-                styles.segmentText,
-                !isGroup
-                  ? { color: theme.primaryText }
-                  : { color: theme.textSecondary },
-              ]}
-            >
-              Personal Home
-            </Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* FILTERS */}
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.filterScroll, styles.sectionGap]}
-        >
-          {FILTERS.map((item) => {
-            const isActive = selected === item;
-            return (
-              <TouchableOpacity
-                key={item}
-                onPress={() => handleFilterSelect(item)}
-                style={[
-                  styles.filterChip,
-                  {
-                    backgroundColor: isActive
-                      ? theme.chipActiveBackground
-                      : theme.chipBackground,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    color: isActive ? theme.chipTextActive : theme.chipText,
-                  }}
-                >
-                  {item}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </ScrollView>
-
-        {/* SECTION TITLE */}
-        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
-          {selected === "Today"
-            ? "Today’s Events"
-            : selected === "Tomorrow"
-            ? "Tomorrow’s Events"
-            : `${selected} Events`}
-        </Text>
-
-        {/* SWIPE DECK */}
-        <View style={styles.cardArea}>
-          {filteredEvents.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
-                No Events Found
-              </Text>
               <Text
-                style={[styles.emptySubtitle, { color: theme.textSecondary }]}
+                style={[
+                  styles.segmentText,
+                  isGroup
+                    ? { color: theme.primaryText }
+                    : { color: theme.textSecondary },
+                ]}
               >
-                Try selecting a different filter.
+                Group Home
               </Text>
-            </View>
-          ) : (
-            <>
-              {/* CENTER OVERLAY LABEL (after action) */}
-              <Animated.Text
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.segmentButton,
+                !isGroup && { backgroundColor: theme.primary },
+              ]}
+              onPress={() => setIsGroup(false)}
+            >
+              <Text
                 style={[
-                  styles.overlayLabel,
-                  {
-                    opacity: labelOpacity,
-                    color: labelText.current === "save" ? "#28D85A" : "#FF4F4F",
-                  },
+                  styles.segmentText,
+                  !isGroup
+                    ? { color: theme.primaryText }
+                    : { color: theme.textSecondary },
                 ]}
               >
-                {labelText.current === "save"
-                  ? "Saved ✓"
-                  : labelText.current === "skip"
-                  ? "Skipped ✕"
-                  : ""}
-              </Animated.Text>
+                Personal Home
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-              {/* LIVE SWIPE LABELS */}
-              <Animated.Text
-                style={[
-                  styles.overlayLabel,
-                  { opacity: dynamicOpacitySave, color: "#28D85A" },
-                ]}
-              >
-                Saved ✓
-              </Animated.Text>
-
-              <Animated.Text
-                style={[
-                  styles.overlayLabel,
-                  { opacity: dynamicOpacitySkip, color: "#FF4F4F" },
-                ]}
-              >
-                Skipped ✕
-              </Animated.Text>
-
-              {/* NEXT CARD */}
-              {nextEvent && (
-                <View style={styles.nextCard}>
-                  <EventCard
-                    event={nextEvent}
-                    onSave={handleSave}
-                    onSkip={handleSkip}
-                  />
-                </View>
-              )}
-
-              {/* CURRENT CARD */}
-              {currentEvent && (
-                <Animated.View
-                  {...panResponder.panHandlers}
-                  style={[styles.topCard, animatedCardStyle]}
+          {/* FILTERS */}
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[styles.filterScroll, styles.sectionGap]}
+          >
+            {FILTERS.map((item) => {
+              const isActive = selected === item;
+              return (
+                <TouchableOpacity
+                  key={item}
+                  onPress={() => handleFilterSelect(item)}
+                  style={[
+                    styles.filterChip,
+                    {
+                      backgroundColor: isActive
+                        ? theme.chipActiveBackground
+                        : theme.chipBackground,
+                    },
+                  ]}
                 >
-                  <EventCard
-                    event={currentEvent}
-                    onSave={handleSave}
-                    onSkip={handleSkip}
-                  />
-                </Animated.View>
-              )}
-            </>
-          )}
-        </View>
-      </ScrollView>
+                  <Text
+                    style={{
+                      color: isActive ? theme.chipTextActive : theme.chipText,
+                    }}
+                  >
+                    {item}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          {/* SECTION TITLE */}
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+            {selected === "Today"
+              ? "Today’s Events"
+              : selected === "Tomorrow"
+              ? "Tomorrow’s Events"
+              : `${selected} Events`}
+          </Text>
+
+          {/* SWIPE DECK */}
+          <View style={styles.cardArea}>
+            {filteredEvents.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+                  No Events Found
+                </Text>
+                <Text
+                  style={[styles.emptySubtitle, { color: theme.textSecondary }]}
+                >
+                  Try a different filter.
+                </Text>
+              </View>
+            ) : (
+              <>
+                {/* overlay label */}
+                <Animated.Text
+                  style={[
+                    styles.overlayLabel,
+                    {
+                      opacity: labelOpacity,
+                      color:
+                        labelText.current === "save" ? "#28D85A" : "#FF4F4F",
+                    },
+                  ]}
+                >
+                  {labelText.current === "save"
+                    ? "Saved ✓"
+                    : labelText.current === "skip"
+                    ? "Skipped ✕"
+                    : ""}
+                </Animated.Text>
+
+                {/* live swipe labels */}
+                <Animated.Text
+                  style={[
+                    styles.overlayLabel,
+                    { opacity: dynamicOpacitySave, color: "#28D85A" },
+                  ]}
+                >
+                  Saved ✓
+                </Animated.Text>
+
+                <Animated.Text
+                  style={[
+                    styles.overlayLabel,
+                    { opacity: dynamicOpacitySkip, color: "#FF4F4F" },
+                  ]}
+                >
+                  Skipped ✕
+                </Animated.Text>
+
+                {/* next card */}
+                {nextEvent && (
+                  <View style={styles.nextCard}>
+                    <EventCard
+                      event={nextEvent}
+                      onSave={handleSave}
+                      onSkip={handleSkip}
+                    />
+                  </View>
+                )}
+
+                {/* top card */}
+                {currentEvent && (
+                  <Animated.View
+                    {...panResponder.panHandlers}
+                    style={[styles.topCard, animatedCardStyle]}
+                  >
+                    <EventCard
+                      event={currentEvent}
+                      onSave={handleSave}
+                      onSkip={handleSkip}
+                    />
+                  </Animated.View>
+                )}
+              </>
+            )}
+          </View>
+        </ScrollView>
+      )}
+
+      {activeDrawerScreen === "About" && <AboutScreen />}
+      {activeDrawerScreen === "Settings" && <SettingsScreen />}
     </SafeAreaView>
   );
 }
@@ -625,6 +710,7 @@ const styles = StyleSheet.create({
 
   drawerItem: {
     paddingVertical: 12,
+    paddingLeft: 12,
   },
 
   drawerText: {
