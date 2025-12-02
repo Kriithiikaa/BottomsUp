@@ -5,6 +5,7 @@ export type Event = {
   title: string;
   image: string;
   category: string;
+  description?: string;
   date?: string;
   location?: string;
 };
@@ -15,7 +16,8 @@ export const EVENTS: Event[] = [
     title: "African Textile Display",
     image: "https://dynamic-media-cdn.tripadvisor.com/media/photo-o/2b/ee/d8/71/treasures-from-the-albert.jpg?w=700&h=400&s=1",
     category: "Art",
-    date: "2025-12-05",
+    description: "Walk through a curated gallery of handwoven fabrics, learn about the symbolism of the patterns, and meet student curators sharing stories from across the diaspora. Hands-on weaving demos run every hour with take-home samples.",
+    date: "2025-12-02",
     location: "George Washington University",
   },
   {
@@ -23,7 +25,8 @@ export const EVENTS: Event[] = [
     title: "Intercollege Basketball",
     image: "https://hubison.com/images/2025/11/11/11112025_HU_WBB_vs_GWU_1814.JPG",
     category: "Sports",
-    date: "2025-11-25",
+    description: "Rival schools face off under the lights. Bring your foam fingers, cheer with the pep band, and enjoy halftime contests with prizes for the loudest fans. Meet-and-greet with student athletes courtside after the buzzer.",
+    date: "2025-12-03",
     location: "Smith's Center",
   },
   {
@@ -31,7 +34,8 @@ export const EVENTS: Event[] = [
     title: "Underground Donut Tour",
     image: "https://media-cdn.tripadvisor.com/media/attractions-splice-spp-720x480/0f/e4/93/89.jpg",
     category: "Food",
-    date: "2026-01-10",
+    description: "Taste your way through four of the city’s best donut spots with a local guide. Vegan and gluten-free options included, plus behind-the-counter stories. Wraps with a coffee flight and a recipe card to take home.",
+    date: "2025-12-04",
     location: "Shenkman Hall",
   },
   {
@@ -39,7 +43,8 @@ export const EVENTS: Event[] = [
     title: "University Orchestra",
     image: "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F832286199%2F127240360083%2F1%2Foriginal.20240822-143403?w=940&auto=format%2Ccompress&q=75&sharp=10&rect=0%2C263%2C1920%2C960&s=b4b67ebf685a3f4c947e74419c338614",
     category: "Music",
-    date: "2025-12-20",
+    description: "An evening program of film scores and symphonic favorites performed by the student orchestra, featuring a soloist spotlight on rising campus talent. Stick around for a lobby reception with the musicians afterward.",
+    date: "2025-12-02",
     location: "Lisner Auditorium",
   },
   {
@@ -47,7 +52,8 @@ export const EVENTS: Event[] = [
     title: "Campus Scavenger Hunt",
     image: "https://img.evbuc.com/https%3A%2F%2Fcdn.evbuc.com%2Fimages%2F901647713%2F313035400695%2F1%2Foriginal.20241118-215959?crop=focalpoint&fit=crop&w=940&auto=format%2Ccompress&q=75&sharp=10&fp-x=0.5&fp-y=0.5&s=2ce0077279b25b8de8033a4464ffd1df",
     category: "Community",
-    date: "2025-11-21",
+    description: "Grab a friend, scan clues, and race across campus landmarks. Expect quirky challenges, photo checkpoints, and a prize table for the fastest teams. Live leaderboard updates show who’s in the lead at every checkpoint.",
+    date: "2025-12-03",
     location: "George Washington University",
   },
   {
@@ -55,7 +61,8 @@ export const EVENTS: Event[] = [
     title: "Cupcakes Picnic",
     image: "https://peasandcrayons.com/wp-content/uploads/2024/01/pink-cake-mix-mini-vanilla-cupcakes-recipe-2-480x270.jpg",
     category: "Food",
-    date: "2025-11-30",
+    description: "Outdoor blanket spreads, pastel cupcakes, and a build-your-own topping bar. Acoustic covers from student musicians set the vibe. Limited picnic blankets available—arrive early to grab a spot.",
+    date: "2025-12-04",
     location: "Georgetown",
   },
   {
@@ -63,6 +70,7 @@ export const EVENTS: Event[] = [
     title: "Campus Sustainability Fair",
     image: "https://www.csus.edu/news/newsroom/stories/2023/4/images/sac_state_earth_day_20230420_0212_bt.jpg",
     category: "Campus",
+    description: "Meet green startups, swap clothes at the thrift rack, and learn quick dorm-friendly ways to cut waste. Workshops start every 30 minutes. Bring a reusable jar for the zero-waste samples table.",
     date: "2025-12-02",
     location: "University Student Center",
   },
@@ -71,7 +79,8 @@ export const EVENTS: Event[] = [
     title: "Student Football Finals",
     image: "https://picsum.photos/seed/event-8/600/400",
     category: "Sports",
-    date: "2025-12-10",
+    description: "Championship matchup between the top intramural teams. Tailgate bites, marching band hype, and a trophy presentation at midfield. Student broadcasters will call the play-by-play over the PA.",
+    date: "2025-12-03",
     location: "Athletics Field",
   },
   {
@@ -79,7 +88,8 @@ export const EVENTS: Event[] = [
     title: "Indie Bands Showcase",
     image: "https://media.gq-magazine.co.uk/photos/6629390700f1549c4db74c52/16:9/w_2560%2Cc_limit/Indie_albums_HP.jpg",
     category: "Music",
-    date: "2025-12-15",
+    description: "Three student-led bands debut original tracks. Expect jangly guitars, bedroom-pop synths, and a late-night open mic to close the set. Merch table and zines available from each band.",
+    date: "2025-12-04",
     location: "Corcorran Hall",
   },
   {
@@ -87,7 +97,8 @@ export const EVENTS: Event[] = [
     title: "FightClub Film Screening",
     image: "https://m.media-amazon.com/images/I/71QPnEkXygS._AC_UF1000,1000_QL80_.jpg",
     category: "Community",
-    date: "2025-11-28",
+    description: "Cult-classic screening with a pre-show trivia round and a short discussion on visual style after the credits roll. Popcorn on the house. Costumes encouraged for the photo wall in the lobby.",
+    date: "2025-12-02",
     location: "University Student Center",
   },
   {
@@ -95,7 +106,8 @@ export const EVENTS: Event[] = [
     title: "Morning Yoga",
     image: "https://theyogahub.ie/wp-content/uploads/2017/11/Yoga-shutterstock_126464135.jpg",
     category: "Community",
-    date: "2025-11-20",
+    description: "Gentle vinyasa to start your day. Mats provided, beginners welcome, and herbal tea available afterward on the lawn. Watch the sunrise over the river before cooldown.",
+    date: "2025-12-03",
     location: "LadyBird Johnson Park",
   },
   {
@@ -103,7 +115,8 @@ export const EVENTS: Event[] = [
     title: "Chess Tournament",
     image: "https://thumbs.dreamstime.com/b/foggy-chess-king-surrounded-mist-mysterious-dramatic-atmosphere-mysterious-dramatic-shot-foggy-chess-king-374517645.jpg",
     category: "Sports",
-    date: "2025-12-01",
+    description: "Rapid and blitz brackets with pro clocks, open to all ratings. Study corner available between rounds with puzzles and snacks. Finals board will be projected so spectators can follow along.",
+    date: "2025-12-04",
     location: "15 Dupont Cir NW",
   },
   {
@@ -111,7 +124,8 @@ export const EVENTS: Event[] = [
     title: "Clay Workshop",
     image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTG86tP9PYz4Nye2j9LfucryP6BxDmrBRvn2Q&s",
     category: "Art",
-    date: "2025-12-08",
+    description: "Hands-on pottery basics: centering, pulling walls, and simple glazing. Leave with a finished piece fired by our studio techs. Aprons and tools provided; wear clothes you can get messy in.",
+    date: "2025-12-02",
     location: "3121 Blues Alley",
   },
   {
@@ -119,7 +133,8 @@ export const EVENTS: Event[] = [
     title: "Multi-Cultural Night",
     image: "https://www.pcc.edu/news/wp-content/uploads/sites/33/2018/04/MulticulturalNight1.jpg",
     category: "Community",
-    date: "2025-12-12",
+    description: "Cuisine tables from 12 student orgs, cultural performances, and a pop-up market of handmade crafts supporting club fundraisers. Dance floor opens after the final performance.",
+    date: "2025-12-03",
     location: "University Student Center",
   },
   {
@@ -127,7 +142,8 @@ export const EVENTS: Event[] = [
     title: "Charity Run",
     image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRmU8s2IAPW2kVXlukZucJDUSfdbUNQhE-2oQ&s",
     category: "Sports",
-    date: "2025-11-22",
+    description: "5K around the monuments to raise funds for local shelters. Pace crews for all levels and free coffee at the finish line. Streets close to traffic—arrive early for gear check.",
+    date: "2025-12-04",
     location: "Washington Monument",
   },
   {
@@ -135,7 +151,8 @@ export const EVENTS: Event[] = [
     title: "Outdoor Guitar",
     image: "https://internationalguitarnight.com/wp-content/uploads/2020/05/ign2021_icon1.jpg",
     category: "Music",
-    date: "2025-12-18",
+    description: "A mellow sunset set featuring fingerstyle covers and student originals. Bring a blanket; limited lawn chairs provided. Open jam follows the main set—bring your instrument.",
+    date: "2025-12-02",
     location: "Kogan Plaza",
   },
   {
@@ -143,7 +160,8 @@ export const EVENTS: Event[] = [
     title: "Book Fair",
     image: "https://accidentallywesanderson.com/wp-content/uploads/2021/03/DSC_4787-scaled.jpg",
     category: "Campus",
-    date: "2025-11-27",
+    description: "Local indie presses and student authors share new releases. Swap table for used paperbacks, plus a quiet corner for readings. Short panel on self-publishing starts at 3 PM.",
+    date: "2025-12-03",
     location: "Georgetown",
   },
   {
@@ -151,7 +169,8 @@ export const EVENTS: Event[] = [
     title: "Sand Volleyball",
     image: "https://streamline.imgix.net/5ecad171-c860-40b7-b4da-3cc65377bc89/68041773-6a7c-4bf1-8b33-ac66ac43257b/Untitled%20design%20(7).png?ixlib=rb-1.1.0&w=2000&h=2000&fit=max&or=0&s=763d9b9577dfc95515227b1de578cf7f",
     category: "Sports",
-    date: "2025-11-24",
+    description: "Evening drop-in games under string lights with rotating teams. Referees provided; bring water and sunscreen. Scorekeeping and loaner kneepads available courtside.",
+    date: "2025-12-04",
     location: "Athletics Field",
   },
   {
@@ -159,7 +178,8 @@ export const EVENTS: Event[] = [
     title: "Desserts Tasting",
     image: "https://dancearoundthekitchen.com/wp-content/uploads/2024/04/DSC_1435.jpg",
     category: "Food",
-    date: "2025-12-03",
+    description: "Pastry students present mini flights of sweets from around the world. Vote for your favorite and grab recipes to try at home. Live demo from the pastry chef on tempering chocolate.",
+    date: "2025-12-02",
     location: "Thurston Dining Hall",
   },
   {
@@ -167,7 +187,8 @@ export const EVENTS: Event[] = [
     title: "Student Science Fair",
     image: "https://study.com/cimages/multimages/16/science_fair.png",
     category: "Campus",
-    date: "2026-01-05",
+    description: "Interactive exhibits from engineering, biology, and robotics clubs. Expect demos, quick talks, and plenty of hands-on experiments. STEM mentors will be on-site for project feedback.",
+    date: "2025-12-03",
     location: "Univeristy Student Center",
   },
 ];

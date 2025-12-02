@@ -1,817 +1,308 @@
-import React, { useState, useRef } from "react";
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Image,
-  Animated,
-  Dimensions,
-  PanResponder,
-  useColorScheme,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import EventCard from "../components/EventCard";
-import AboutScreen from "./AboutScreen";
-import SettingsScreen from "./SettingsScreen";
-import { useSavedEvents } from "../context/SavedEventsContext";
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import HomeFeed, { HomeFeedItem } from '../features/HomeFeed';
+import SwipeableCard from '../features/SwipeableCard';
+import { EVENTS, Event } from '../constants/Events';
+import { saveEvent, removeSavedEvent, getSavedEvents, subscribeSavedEvents } from '../constants/storage';
 
-const SCREEN_WIDTH = Dimensions.get("window").width;
+const categories = ['All', 'sports', 'concerts', 'campus'] as const;
+type Category = (typeof categories)[number];
+type ViewMode = 'Feed' | 'Cards';
 
-/* -----------------------------------------------------------
-   EVENT TYPE
------------------------------------------------------------- */
-type EventType = {
-  id: string;
-  title: string;
-  date: string;
-  time: string;
-  location: string;
-  tags: string[];
-  description: string;
-  image?: string;
-  live?: boolean;
-};
-
-/* -----------------------------------------------------------
-   THEMES
------------------------------------------------------------- */
-const lightTheme = {
-  background: "#FAFAFA",
-  cardBackground: "#FFFFFF",
-  primary: "#FF7A30",
-  primaryText: "#FFFFFF",
-  textPrimary: "#222222",
-  textSecondary: "#555555",
-  chipBackground: "#EEEEEE",
-  chipActiveBackground: "#FF7A30",
-  chipText: "#444444",
-  chipTextActive: "#FFFFFF",
-  segmentBackground: "#F0F0F0",
-  overlay: "rgba(0,0,0,0.35)",
-};
-
-const darkTheme = {
-  background: "#0D0D0F",
-  cardBackground: "#18181C",
-  primary: "#1A73E8",
-  primaryText: "#FFFFFF",
-  textPrimary: "#FFFFFF",
-  textSecondary: "#B5B5B8",
-  chipBackground: "#22252A",
-  chipActiveBackground: "#1A73E8",
-  chipText: "#B5B5B8",
-  chipTextActive: "#FFFFFF",
-  segmentBackground: "#18181C",
-  overlay: "rgba(0,0,0,0.55)",
-};
-
-/* -----------------------------------------------------------
-   MOCK EVENTS
------------------------------------------------------------- */
-const MOCK_EVENTS: EventType[] = [
-  {
-    id: "1",
-    title: "Basketball vs State University",
-    date: "Dec 2, 2025",
-    time: "7:00 PM - 9:00 PM",
-    location: "Sports Arena",
-    tags: ["Sports", "Basketball"],
-    description: "Join us for an exciting basketball game...",
-    image: "https://picsum.photos/600/400?random=1",
-    live: true,
-  },
-  {
-    id: "2",
-    title: "Jazz Night at the Quad",
-    date: "Dec 3, 2025",
-    time: "8:00 PM - 10:00 PM",
-    location: "Quad Lawn",
-    tags: ["Music", "Live"],
-    description: "A relaxing evening with jazz bands performing.",
-    image: "https://picsum.photos/600/400?random=2",
-  },
-  {
-    id: "3",
-    title: "Coding Bootcamp",
-    date: "Dec 2, 2025",
-    time: "5:00 PM - 7:00 PM",
-    location: "Tech Hall",
-    tags: ["Workshops", "Tech"],
-    description: "Learn the basics of coding in just 2 hours!",
-    image: "https://picsum.photos/600/400?random=3",
-  },
-  {
-    id: "4",
-    title: "Stand-Up Comedy Night",
-    date: "Dec 3, 2025",
-    time: "9:00 PM - 11:00 PM",
-    location: "Student Lounge",
-    tags: ["Comedy"],
-    description: "Your favorite student comics take the stage.",
-    image: "https://picsum.photos/600/400?random=4",
-  },
-];
-
-const FILTERS = [
-  "Today",
-  "Tomorrow",
-  "Sports",
-  "Clubs",
-  "Workshops",
-  "Comedy",
-  "Concerts",
-  "Arts",
-];
-
-/* -----------------------------------------------------------
-   DATE PARSER
------------------------------------------------------------- */
-const parseDate = (dateStr: string) => {
-  const cleaned = dateStr.replace(",", "");
-  const [monthStr, dayStr, yearStr] = cleaned.split(" ");
-
-  const MONTHS: Record<string, number> = {
-    Jan: 0,
-    Feb: 1,
-    Mar: 2,
-    Apr: 3,
-    May: 4,
-    Jun: 5,
-    Jul: 6,
-    Aug: 7,
-    Sep: 8,
-    Oct: 9,
-    Nov: 10,
-    Dec: 11,
-  };
-
-  return new Date(Number(yearStr), MONTHS[monthStr], Number(dayStr));
-};
-
-/* -----------------------------------------------------------
-   HOMESCREEN
------------------------------------------------------------- */
-export default function HomeScreen() {
-  // ⭐ FIRST HOOK (must always stay first)
-  const colorScheme = useColorScheme();
-  const theme = colorScheme === "dark" ? darkTheme : lightTheme;
-
-  // ⭐ SECOND HOOK (must stay after theme)
-  const { saveEvent } = useSavedEvents();
-
-  // ⭐ ALL OTHER HOOKS MUST COME AFTER THESE TWO
-  const [selected, setSelected] = useState("Today");
-  const [isGroup, setIsGroup] = useState(true);
-  const [currentIndex, setCurrentIndex] = useState(0);
-
-  // Drawer state
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [activeMenuItem, setActiveMenuItem] = useState<
-    "Home" | "About" | "Settings"
-  >("Home");
-
-  const [activeDrawerScreen, setActiveDrawerScreen] = useState<
-    "Home" | "About" | "Settings"
-  >("Home");
-
-  // Animation refs
-  const slideAnim = useRef(new Animated.Value(-SCREEN_WIDTH * 0.5)).current;
-  const swipe = useRef(new Animated.ValueXY()).current;
-  const labelOpacity = useRef(new Animated.Value(0)).current;
-  const labelText = useRef<"save" | "skip" | null>(null);
-
-  /* -----------------------------------------------------------
-     MENU HANDLING
------------------------------------------------------------- */
-  const openMenu = () => {
-    setMenuOpen(true);
-    Animated.timing(slideAnim, {
-      toValue: 0,
-      duration: 250,
-      useNativeDriver: false,
-    }).start();
-  };
-
-  const closeMenu = () => {
-    Animated.timing(slideAnim, {
-      toValue: -SCREEN_WIDTH * 0.5,
-      duration: 250,
-      useNativeDriver: false,
-    }).start(() => setMenuOpen(false));
-  };
-
-  const handleMenuSelect = (item: "Home" | "About" | "Settings") => {
-    setActiveMenuItem(item);
-    setActiveDrawerScreen(item);
-    closeMenu();
-  };
-
-  /* -----------------------------------------------------------
-     FILTERING
------------------------------------------------------------- */
-  const today = parseDate("Dec 2, 2025");
-  const tomorrow = parseDate("Dec 3, 2025");
-
-  let filteredEvents: EventType[];
-
-  if (selected === "Today") {
-    filteredEvents = MOCK_EVENTS.filter((e) => {
-      const d = parseDate(e.date);
-      return (
-        d.getFullYear() === today.getFullYear() &&
-        d.getMonth() === today.getMonth() &&
-        d.getDate() === today.getDate()
-      );
-    });
-  } else if (selected === "Tomorrow") {
-    filteredEvents = MOCK_EVENTS.filter((e) => {
-      const d = parseDate(e.date);
-      return (
-        d.getFullYear() === tomorrow.getFullYear() &&
-        d.getMonth() === tomorrow.getMonth() &&
-        d.getDate() === tomorrow.getDate()
-      );
-    });
-  } else {
-    filteredEvents = MOCK_EVENTS.filter((e) =>
-      e.tags.some((t) => t.toLowerCase() === selected.toLowerCase())
-    );
+const formatEventTime = (iso?: string): string => {
+  if (!iso) return 'Time TBD';
+  try {
+    const d = new Date(iso);
+    const dateText = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', weekday: 'short' });
+    return `${dateText} • All day`;
+  } catch (e) {
+    return 'Time TBD';
   }
+};
 
-  const handleFilterSelect = (item: string) => {
-    setSelected(item);
-    setCurrentIndex(0);
-  };
+type HomeScreenProps = {
+  filterActive?: boolean;
+  showSearch?: boolean;
+  onHideSearch?: () => void;
+};
 
-  /* -----------------------------------------------------------
-     SWIPE FEEDBACK
------------------------------------------------------------- */
-  const triggerOverlayLabel = (type: "save" | "skip") => {
-    labelText.current = type;
-    labelOpacity.setValue(1);
+export default function HomeScreen({
+  filterActive,
+  showSearch = false,
+  onHideSearch,
+}: HomeScreenProps) {
+  const [view, setView] = useState<ViewMode>('Feed');
+  const [selectedCategory, setSelectedCategory] = useState<Category>('All');
+  const [eventsStack, setEventsStack] = useState<Event[]>([...EVENTS].reverse());
+  const hideSearch = onHideSearch ?? (() => {});
 
-    Animated.timing(labelOpacity, {
-      toValue: 0,
-      delay: 250,
-      duration: 150,
-      useNativeDriver: false,
-    }).start();
-  };
+  useEffect(() => {
+    if (showSearch && view !== 'Feed') {
+      setView('Feed');
+    }
+  }, [showSearch, view]);
 
-  /* -----------------------------------------------------------
-     SWIPE LOGIC
------------------------------------------------------------- */
-  const rotate = swipe.x.interpolate({
-    inputRange: [-SCREEN_WIDTH / 2, 0, SCREEN_WIDTH / 2],
-    outputRange: ["-15deg", "0deg", "15deg"],
-    extrapolate: "clamp",
-  });
+  const handleSwipeRight = () => removeTopEvent();
+  const handleSwipeLeft = () => removeTopEvent();
 
-  const animatedCardStyle = {
-    transform: [...swipe.getTranslateTransform(), { rotate }],
-  };
+  const removeTopEvent = () =>
+    setEventsStack((prev) => prev.slice(0, prev.length - 1));
 
-  const dynamicOpacitySave = swipe.x.interpolate({
-    inputRange: [0, SCREEN_WIDTH / 3],
-    outputRange: [0, 1],
-    extrapolate: "clamp",
-  });
-
-  const dynamicOpacitySkip = swipe.x.interpolate({
-    inputRange: [-SCREEN_WIDTH / 3, 0],
-    outputRange: [1, 0],
-    extrapolate: "clamp",
-  });
-
-  const handleSave = () => {
-    const ev = filteredEvents[currentIndex];
-    if (ev) saveEvent(ev);
-    triggerOverlayLabel("save");
-
-    setCurrentIndex((i) => (i + 1 < filteredEvents.length ? i + 1 : 0));
-  };
-
-  const handleSkip = () => {
-    triggerOverlayLabel("skip");
-
-    setCurrentIndex((i) => (i + 1 < filteredEvents.length ? i + 1 : 0));
-  };
-
-  const forceSwipe = (dir: "left" | "right") => {
-    Animated.timing(swipe, {
-      toValue: { x: dir === "right" ? SCREEN_WIDTH : -SCREEN_WIDTH, y: 0 },
-      duration: 200,
-      useNativeDriver: false,
-    }).start(() => {
-      swipe.setValue({ x: 0, y: 0 });
-      dir === "right" ? handleSave() : handleSkip();
-    });
-  };
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 10,
-
-      onPanResponderMove: Animated.event([null, { dx: swipe.x, dy: swipe.y }], {
-        useNativeDriver: false,
-      }),
-
-      onPanResponderRelease: (_, g) => {
-        const threshold = 120;
-
-        if (g.dx > threshold) return forceSwipe("right");
-        if (g.dx < -threshold) return forceSwipe("left");
-
-        Animated.spring(swipe, {
-          toValue: { x: 0, y: 0 },
-          useNativeDriver: false,
-        }).start();
-      },
-    })
-  ).current;
-
-  const currentEvent = filteredEvents[currentIndex];
-  const nextEvent =
-    currentIndex + 1 < filteredEvents.length
-      ? filteredEvents[currentIndex + 1]
-      : null;
-
-  /* -----------------------------------------------------------
-     HEADER TITLE (Hdr2)
------------------------------------------------------------- */
-  const getHeaderTitle = () => {
-    switch (activeDrawerScreen) {
-      case "About":
-        return "About";
-      case "Settings":
-        return "Settings";
-      default:
-        return "Bottoms Up!";
+  // Helper to convert event.date to 'today' | 'tomorrow' | 'later'
+  const deriveWhen = (isoDate?: string): 'today' | 'tomorrow' | 'later' => {
+    if (!isoDate) return 'later';
+    try {
+      const d = new Date(isoDate);
+      const now = new Date();
+      // normalize to midnight
+      const md = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const mn = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diff = Math.round((md.getTime() - mn.getTime()) / (24 * 60 * 60 * 1000));
+      if (diff === 0) return 'today';
+      if (diff === 1) return 'tomorrow';
+      return 'later';
+    } catch (e) {
+      return 'later';
     }
   };
 
-  /* -----------------------------------------------------------
-     RENDER
------------------------------------------------------------- */
+  // map eventsStack into HomeFeed item shape
+  const feedItems: HomeFeedItem[] = useMemo(
+    () =>
+      eventsStack.map((e) => ({
+        id: e.id,
+        title: e.title,
+        subtitle: formatEventTime(e.date),
+        location: e.location || 'Location TBD',
+        image: e.image,
+        when: deriveWhen(e.date),
+        tags: e.category ? [e.category] : [],
+        description: e.description,
+        original: e,
+      })),
+    [eventsStack],
+  );
+
+  const [filteredFeedItems, setFilteredFeedItems] = useState<HomeFeedItem[] | null>(null);
+  const handleFilteredChange = useCallback((items: HomeFeedItem[]) => {
+    setFilteredFeedItems(items);
+  }, []);
+
+  const buildFallbackEvent = (item: HomeFeedItem): Event => ({
+    id: item.id,
+    title: item.title,
+    description: item.subtitle || 'Details coming soon',
+    image: item.image || 'https://picsum.photos/600/400?blur=2',
+    category: (item.tags && item.tags[0]) || 'general',
+    location: item.location,
+  });
+
+  const cardsEvents: Event[] = useMemo(() => {
+    const baseItems = filteredFeedItems && filteredFeedItems.length ? filteredFeedItems : feedItems;
+    const categoryFiltered =
+      selectedCategory === 'All'
+        ? baseItems
+        : baseItems.filter((it) => (it.tags || []).some((tag) => tag.toLowerCase() === selectedCategory.toLowerCase()));
+    return categoryFiltered.map((it) => it.original || buildFallbackEvent(it));
+  }, [filteredFeedItems, feedItems, selectedCategory]);
+
+  const [savedIds, setSavedIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    const unsubscribe = subscribeSavedEvents((list) => {
+      if (mounted) setSavedIds(list.map((s) => s.id));
+    });
+    (async () => {
+      try {
+        const list = await getSavedEvents();
+        if (!mounted) return;
+        setSavedIds(list.map((s) => s.id));
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  const toggleSaveForEvent = async (ev: Event) => {
+    if (!ev || !ev.id) return;
+    const isSaved = savedIds.includes(ev.id);
+    try {
+      // eslint-disable-next-line no-console
+      console.log('[HomeScreen] toggleSaveForEvent', ev.id, isSaved ? 'unsave' : 'save');
+      if (isSaved) {
+        await removeSavedEvent(ev.id);
+      } else {
+        await saveEvent({ id: ev.id, title: ev.title, subtitle: ev.description, location: ev.location, image: ev.image });
+      }
+    } catch (e) {
+      // ignore
+    }
+  };
+
   return (
-    <SafeAreaView
-      style={[styles.container, { backgroundColor: theme.background }]}
-    >
-      {/* HEADER */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.menuButton} onPress={openMenu}>
-          <Text style={[styles.menuIcon, { color: theme.textPrimary }]}>☰</Text>
-        </TouchableOpacity>
-
-        <Text style={[styles.title, { color: theme.textPrimary }]}>
-          {getHeaderTitle()}
-        </Text>
-
-        <Image
-          source={{ uri: "https://i.pravatar.cc/100" }}
-          style={styles.profileImage}
-        />
-      </View>
-
-      {/* DRAWER */}
-      {menuOpen && (
-        <TouchableOpacity
-          style={[styles.drawerOverlay, { backgroundColor: theme.overlay }]}
-          onPress={closeMenu}
-          activeOpacity={1}
-        >
-          <Animated.View
-            style={[
-              styles.drawer,
-              {
-                backgroundColor: theme.cardBackground,
-                transform: [{ translateX: slideAnim }],
-              },
-            ]}
-          >
-            <Text style={[styles.drawerTitle, { color: theme.textPrimary }]}>
-              Menu
-            </Text>
-
-            {/* HOME */}
+    <SafeAreaView style={styles.container}>
+      {/* Top segmented switch (fixed above feed) */}
+      <View style={styles.switchWrap}>
+        <View style={styles.switchRow}>
+          <View style={styles.switchBg}>
             <TouchableOpacity
-              style={[
-                styles.drawerItem,
-                activeMenuItem === "Home" && {
-                  borderLeftWidth: 4,
-                  borderLeftColor: theme.primary,
-                },
-              ]}
-              onPress={() => handleMenuSelect("Home")}
+              style={[styles.switchBtn, styles.switchLeft, view === 'Feed' && styles.switchSelected]}
+              onPress={() => { setView('Feed'); }}
+              activeOpacity={0.85}
             >
-              <Text
-                style={[
-                  styles.drawerText,
-                  activeMenuItem === "Home"
-                    ? { color: theme.primary, fontWeight: "700" }
-                    : { color: theme.textSecondary },
-                ]}
-              >
-                Home
-              </Text>
+              <Text style={[styles.switchText, view === 'Feed' && styles.switchTextSelected]}>For You</Text>
             </TouchableOpacity>
-
-            {/* ABOUT */}
             <TouchableOpacity
-              style={[
-                styles.drawerItem,
-                activeMenuItem === "About" && {
-                  borderLeftWidth: 4,
-                  borderLeftColor: theme.primary,
-                },
-              ]}
-              onPress={() => handleMenuSelect("About")}
+              style={[styles.switchBtn, styles.switchRight, view === 'Cards' && styles.switchSelected]}
+              onPress={() => { setView('Cards'); hideSearch(); }}
+              activeOpacity={0.85}
             >
-              <Text
-                style={[
-                  styles.drawerText,
-                  activeMenuItem === "About"
-                    ? { color: theme.primary, fontWeight: "700" }
-                    : { color: theme.textSecondary },
-                ]}
-              >
-                About
-              </Text>
-            </TouchableOpacity>
-
-            {/* SETTINGS */}
-            <TouchableOpacity
-              style={[
-                styles.drawerItem,
-                activeMenuItem === "Settings" && {
-                  borderLeftWidth: 4,
-                  borderLeftColor: theme.primary,
-                },
-              ]}
-              onPress={() => handleMenuSelect("Settings")}
-            >
-              <Text
-                style={[
-                  styles.drawerText,
-                  activeMenuItem === "Settings"
-                    ? { color: theme.primary, fontWeight: "700" }
-                    : { color: theme.textSecondary },
-                ]}
-              >
-                Settings
-              </Text>
-            </TouchableOpacity>
-          </Animated.View>
-        </TouchableOpacity>
-      )}
-
-      {/* -------------------------------------------------------
-         SCREEN SWITCHING (FULL REPLACE - L1)
-         Only ONE of these renders at a time.
-      -------------------------------------------------------- */}
-      {activeDrawerScreen === "Home" && (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* MODE TOGGLE */}
-          <View
-            style={[
-              styles.segmentContainer,
-              styles.sectionGap,
-              { backgroundColor: theme.segmentBackground },
-            ]}
-          >
-            <TouchableOpacity
-              style={[
-                styles.segmentButton,
-                isGroup && { backgroundColor: theme.primary },
-              ]}
-              onPress={() => setIsGroup(true)}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  isGroup
-                    ? { color: theme.primaryText }
-                    : { color: theme.textSecondary },
-                ]}
-              >
-                Group Home
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.segmentButton,
-                !isGroup && { backgroundColor: theme.primary },
-              ]}
-              onPress={() => setIsGroup(false)}
-            >
-              <Text
-                style={[
-                  styles.segmentText,
-                  !isGroup
-                    ? { color: theme.primaryText }
-                    : { color: theme.textSecondary },
-                ]}
-              >
-                Personal Home
-              </Text>
+              <Text style={[styles.switchText, view === 'Cards' && styles.switchTextSelected]}>Plan</Text>
             </TouchableOpacity>
           </View>
-
-          {/* FILTERS */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={[styles.filterScroll, styles.sectionGap]}
-          >
-            {FILTERS.map((item) => {
-              const isActive = selected === item;
-              return (
-                <TouchableOpacity
-                  key={item}
-                  onPress={() => handleFilterSelect(item)}
-                  style={[
-                    styles.filterChip,
-                    {
-                      backgroundColor: isActive
-                        ? theme.chipActiveBackground
-                        : theme.chipBackground,
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      color: isActive ? theme.chipTextActive : theme.chipText,
-                    }}
-                  >
-                    {item}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-          </ScrollView>
-
-          {/* SECTION TITLE */}
-          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
-            {selected === "Today"
-              ? "Today’s Events"
-              : selected === "Tomorrow"
-              ? "Tomorrow’s Events"
-              : `${selected} Events`}
-          </Text>
-
-          {/* SWIPE DECK */}
-          <View style={styles.cardArea}>
-            {filteredEvents.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
-                  No Events Found
-                </Text>
+        </View>
+      </View>
+      {view === 'Feed' ? (
+        // Render HomeFeed
+        <HomeFeed
+          events={feedItems}
+          onFilteredChange={handleFilteredChange}
+          filterActive={filterActive}
+          showSearch={showSearch}
+        />
+      ) : (
+        // Render cards view
+        <>
+          {/* Category Tabs */}
+          <View style={styles.categoryContainer}>
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat}
+                style={[
+                  styles.categoryButton,
+                  selectedCategory === cat && styles.categorySelected,
+                ]}
+                onPress={() => setSelectedCategory(cat)}
+              >
                 <Text
-                  style={[styles.emptySubtitle, { color: theme.textSecondary }]}
+                  style={[
+                    styles.categoryText,
+                    selectedCategory === cat && styles.categoryTextSelected,
+                  ]}
                 >
-                  Try a different filter.
+                  {cat.toUpperCase()}
                 </Text>
-              </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Swipeable Cards */}
+          <View style={styles.swiperContainer}>
+            {cardsEvents.length === 0 ? (
+              <Text style={styles.noEventsText}>No events to show</Text>
             ) : (
-              <>
-                {/* overlay label */}
-                <Animated.Text
-                  style={[
-                    styles.overlayLabel,
-                    {
-                      opacity: labelOpacity,
-                      color:
-                        labelText.current === "save" ? "#28D85A" : "#FF4F4F",
-                    },
-                  ]}
-                >
-                  {labelText.current === "save"
-                    ? "Saved ✓"
-                    : labelText.current === "skip"
-                    ? "Skipped ✕"
-                    : ""}
-                </Animated.Text>
-
-                {/* live swipe labels */}
-                <Animated.Text
-                  style={[
-                    styles.overlayLabel,
-                    { opacity: dynamicOpacitySave, color: "#28D85A" },
-                  ]}
-                >
-                  Saved ✓
-                </Animated.Text>
-
-                <Animated.Text
-                  style={[
-                    styles.overlayLabel,
-                    { opacity: dynamicOpacitySkip, color: "#FF4F4F" },
-                  ]}
-                >
-                  Skipped ✕
-                </Animated.Text>
-
-                {/* next card */}
-                {nextEvent && (
-                  <View style={styles.nextCard}>
-                    <EventCard
-                      event={nextEvent}
-                      onSave={handleSave}
-                      onSkip={handleSkip}
-                    />
-                  </View>
-                )}
-
-                {/* top card */}
-                {currentEvent && (
-                  <Animated.View
-                    {...panResponder.panHandlers}
-                    style={[styles.topCard, animatedCardStyle]}
-                  >
-                    <EventCard
-                      event={currentEvent}
-                      onSave={handleSave}
-                      onSkip={handleSkip}
-                    />
-                  </Animated.View>
-                )}
-              </>
+              cardsEvents.map((event) => (
+                <SwipeableCard
+                  key={event.id}
+                  event={event}
+                  saved={savedIds.includes(event.id)}
+                  onSwipeLeft={handleSwipeLeft}
+                  onSwipeRight={() => {
+                    // toggle saved state for this event; keep card visible so the heart stays
+                    toggleSaveForEvent(event);
+                  }}
+                />
+              ))
             )}
           </View>
-        </ScrollView>
+        </>
       )}
-
-      {activeDrawerScreen === "About" && <AboutScreen />}
-      {activeDrawerScreen === "Settings" && <SettingsScreen />}
     </SafeAreaView>
   );
 }
 
-/* -----------------------------------------------------------
-   STYLES
------------------------------------------------------------- */
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-
-  scrollContent: { paddingBottom: 40 },
-
-  header: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: 18,
-    paddingTop: 6,
-    paddingBottom: 4,
-  },
-
-  menuButton: { padding: 4 },
-
-  menuIcon: { fontSize: 28 },
-
-  title: {
-    fontSize: 24,
-    fontWeight: "700",
-  },
-
-  profileImage: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-  },
-
-  drawerOverlay: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    zIndex: 100,
-  },
-
-  drawer: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    bottom: 0,
-    width: SCREEN_WIDTH * 0.5,
-    paddingTop: 80,
-    paddingHorizontal: 20,
-    zIndex: 200,
-  },
-
-  drawerTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    marginBottom: 25,
-  },
-
-  drawerItem: {
-    paddingVertical: 12,
-    paddingLeft: 12,
-  },
-
-  drawerText: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-
-  sectionGap: {
-    marginTop: 14,
-  },
-
-  segmentContainer: {
-    flexDirection: "row",
-    alignSelf: "center",
-    padding: 4,
-    borderRadius: 20,
-  },
-
-  segmentButton: {
-    paddingVertical: 6,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-  },
-
-  segmentText: {
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
-  filterScroll: {
-    flexDirection: "row",
-    paddingHorizontal: 15,
-    height: 40,
-  },
-
-  filterChip: {
+  container: {
+    flex: 1,
     paddingHorizontal: 10,
-    borderRadius: 16,
-    marginRight: 8,
-    height: 28,
-    justifyContent: "center",
-    alignItems: "center",
+    paddingTop: 10,
+    paddingBottom: 10,
   },
-
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    marginLeft: 18,
-    marginBottom: 30,
-    marginTop: 6,
+  categoryContainer: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    marginBottom: 10,
   },
-
-  cardArea: {
-    marginTop: 12,
-    minHeight: 420,
-    justifyContent: "center",
-    alignItems: "center",
+  categoryButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    backgroundColor: "#eee",
   },
-
-  overlayLabel: {
-    position: "absolute",
-    top: 150,
-    width: "100%",
+  categorySelected: { backgroundColor: "#FF6347" },
+  categoryText: { fontSize: 14, color: "#555", fontWeight: "bold" },
+  categoryTextSelected: { color: "white" },
+  swiperContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  noEventsText: {
+    fontSize: 16,
+    color: "#888",
     textAlign: "center",
-    fontSize: 32,
-    fontWeight: "700",
-    zIndex: 20,
+    marginTop: 50,
   },
-
-  emptyContainer: {
-    height: 420,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 20,
+  switchWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 12,
   },
-
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: "700",
-    marginBottom: 8,
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 10,
   },
-
-  emptySubtitle: {
-    fontSize: 14,
-    opacity: 0.7,
-    textAlign: "center",
+  switchBg: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f7',
+    borderRadius: 999,
+    padding: 6,
+    borderWidth: 1,
+    borderColor: '#e3e3e7',
   },
-
-  topCard: {
-    position: "absolute",
-    width: "100%",
-    zIndex: 5,
+  switchBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 999,
   },
-
-  nextCard: {
-    position: "absolute",
-    width: "100%",
-    opacity: 0.4,
-    transform: [{ scale: 0.95 }],
-    zIndex: 2,
+  switchLeft: {
+    marginRight: 6,
+  },
+  switchRight: {
+    marginLeft: 6,
+  },
+  switchSelected: {
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  switchText: {
+    fontSize: 15,
+    color: '#666',
+    fontWeight: '600',
+  },
+  switchTextSelected: {
+    color: '#111',
   },
 });
-
-export {};
