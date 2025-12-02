@@ -5,132 +5,157 @@ import {
   ScrollView,
   StyleSheet,
   TouchableOpacity,
-  Animated,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useSavedEvents } from "../context/SavedEventsContext";
 
+/* -----------------------------------------------------------
+   HYBRID THEME
+------------------------------------------------------------ */
+
+const lightTheme = {
+  background: "#FAFAFA",
+  cardBackground: "#FFFFFF",
+  textPrimary: "#222222",
+  textSecondary: "#555555",
+  statBox: "#F5F5F5",
+  chipBackground: "#EEEEEE",
+  chipActiveBackground: "#FF7A30",
+  chipText: "#444444",
+  chipTextActive: "#FFFFFF",
+  border: "#E5E5E5",
+  rsvpButton: "#FF7A30",
+  rsvpButtonText: "#FFF",
+  rsvpButtonInactive: "#FFF4EC",
+  rsvpButtonInactiveText: "#FF7A30",
+  liveBg: "#FF3B30",
+  liveText: "#FFFFFF",
+};
+
+const darkTheme = {
+  background: "#0D0D0F",
+  cardBackground: "#18181C",
+  textPrimary: "#FFFFFF",
+  textSecondary: "#B5B5B8",
+  statBox: "#1F1F24",
+  chipBackground: "#22252A",
+  chipActiveBackground: "#1A73E8",
+  chipText: "#B5B5B8",
+  chipTextActive: "#FFFFFF",
+  border: "#2A2C30",
+  rsvpButton: "#1A73E8",
+  rsvpButtonText: "#FFFFFF",
+  rsvpButtonInactive: "#102A47",
+  rsvpButtonInactiveText: "#70A9FF",
+  liveBg: "#FF453A",
+  liveText: "#FFFFFF",
+};
+
 export default function SavedScreen() {
-  const { savedEvents, rsvpedEvents, rsvpEvent, unRsvpEvent } =
-    useSavedEvents();
+  const { savedEvents, toggleRSVP } = useSavedEvents();
+  const scheme = useColorScheme();
+  const theme = scheme === "dark" ? darkTheme : lightTheme;
 
   const [filter, setFilter] = useState<"all" | "rsvped" | "past">("all");
-
-  // Toast fade + slide animation
-  const [toast, setToast] = useState("");
-  const toastOpacity = useState(new Animated.Value(0))[0];
-  const toastTranslate = useState(new Animated.Value(20))[0]; // slide-up effect
 
   const TODAY = new Date("Dec 2, 2025");
   const parseDate = (d: string) => new Date(d);
 
-  /* -----------------------------------------------------------
-     FILTERED LIST
-  ----------------------------------------------------------- */
   const filteredList = useMemo(() => {
     if (filter === "all") return savedEvents;
-    if (filter === "rsvped") return rsvpedEvents;
-    if (filter === "past") {
+    if (filter === "rsvped") return savedEvents.filter((ev) => ev.rsvped);
+    if (filter === "past")
       return savedEvents.filter((ev) => parseDate(ev.date) < TODAY);
-    }
     return savedEvents;
-  }, [filter, savedEvents, rsvpedEvents]);
+  }, [filter, savedEvents]);
 
-  /* -----------------------------------------------------------
-     STATS
-  ----------------------------------------------------------- */
   const savedCount = savedEvents.length;
-  const rsvpCount = rsvpedEvents.length;
+  const rsvpCount = savedEvents.filter((ev) => ev.rsvped).length;
   const todayCount = savedEvents.filter(
     (ev) => parseDate(ev.date).toDateString() === TODAY.toDateString()
   ).length;
 
-  /* -----------------------------------------------------------
-     TOAST FUNCTION
-  ----------------------------------------------------------- */
-  const showToast = (msg: string) => {
-    setToast(msg);
-
-    Animated.parallel([
-      Animated.timing(toastOpacity, {
-        toValue: 1,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(toastTranslate, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(toastOpacity, {
-            toValue: 0,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-          Animated.timing(toastTranslate, {
-            toValue: 20,
-            duration: 250,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }, 1200);
-    });
-  };
-
   return (
-    <SafeAreaView style={styles.safeContainer}>
+    <SafeAreaView
+      style={[styles.safeContainer, { backgroundColor: theme.background }]}
+    >
       <ScrollView
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        {/* TITLE */}
-        <Text style={styles.header}>Saved Events</Text>
+        <Text style={[styles.header, { color: theme.textPrimary }]}>
+          Saved Events
+        </Text>
 
-        {/* -----------------------------------------------------------
-           SUMMARY BOXES
-        ----------------------------------------------------------- */}
+        {/* STATS */}
         <View style={styles.statsRow}>
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{rsvpCount}</Text>
-            <Text style={styles.statLabel}>RSVPed</Text>
+          <View
+            style={[
+              styles.statBox,
+              { backgroundColor: theme.statBox, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
+              {rsvpCount}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              RSVPed
+            </Text>
           </View>
-
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{savedCount}</Text>
-            <Text style={styles.statLabel}>Saved</Text>
+          <View
+            style={[
+              styles.statBox,
+              { backgroundColor: theme.statBox, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
+              {savedCount}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Saved
+            </Text>
           </View>
-
-          <View style={styles.statBox}>
-            <Text style={styles.statNumber}>{todayCount}</Text>
-            <Text style={styles.statLabel}>Today</Text>
+          <View
+            style={[
+              styles.statBox,
+              { backgroundColor: theme.statBox, borderColor: theme.border },
+            ]}
+          >
+            <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
+              {todayCount}
+            </Text>
+            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
+              Today
+            </Text>
           </View>
         </View>
 
-        {/* -----------------------------------------------------------
-           FILTERS
-        ----------------------------------------------------------- */}
+        {/* FILTERS */}
         <View style={styles.filterRow}>
-          {["all", "rsvped", "past"].map((type) => {
+          {["all", "rsvped", "past"].map((key) => {
+            const isActive = filter === key;
             const label =
-              type === "all" ? "All" : type === "rsvped" ? "RSVPed" : "Past";
+              key === "all" ? "All" : key === "rsvped" ? "RSVPed" : "Past";
 
             return (
               <TouchableOpacity
-                key={type}
-                onPress={() => setFilter(type as any)}
+                key={key}
+                onPress={() => setFilter(key as any)}
                 style={[
                   styles.filterChip,
-                  filter === type && styles.filterChipActive,
+                  {
+                    backgroundColor: isActive
+                      ? theme.chipActiveBackground
+                      : theme.chipBackground,
+                  },
                 ]}
               >
                 <Text
-                  style={[
-                    styles.filterText,
-                    filter === type && styles.filterTextActive,
-                  ]}
+                  style={{
+                    color: isActive ? theme.chipTextActive : theme.chipText,
+                    fontWeight: "600",
+                  }}
                 >
                   {label}
                 </Text>
@@ -139,204 +164,154 @@ export default function SavedScreen() {
           })}
         </View>
 
-        {/* -----------------------------------------------------------
-           EVENT LIST
-        ----------------------------------------------------------- */}
+        {/* EVENT LIST */}
         {filteredList.length === 0 ? (
-          <Text style={styles.emptyText}>No events available.</Text>
+          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+            No events available.
+          </Text>
         ) : (
-          filteredList.map((event) => {
-            const isRSVPed = event.rsvped === true;
-
-            return (
-              <View key={event.id} style={styles.savedItem}>
-                {/* Title + LIVE */}
-                <View style={styles.titleRow}>
-                  <Text style={styles.title}>{event.title}</Text>
-                  {event.live && <Text style={styles.liveTag}>LIVE</Text>}
+          filteredList.map((event) => (
+            <View
+              key={event.id}
+              style={[
+                styles.card,
+                {
+                  backgroundColor: theme.cardBackground,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              {/* LIVE TAG — top right */}
+              {event.live && (
+                <View
+                  style={[styles.liveTag, { backgroundColor: theme.liveBg }]}
+                >
+                  <Text style={{ color: theme.liveText, fontSize: 11 }}>
+                    LIVE
+                  </Text>
                 </View>
+              )}
 
-                <Text style={styles.time}>{event.time}</Text>
-                <Text style={styles.location}>{event.location}</Text>
+              {/* TITLE */}
+              <Text style={[styles.title, { color: theme.textPrimary }]}>
+                {event.title}
+              </Text>
 
-                {/* -----------------------------------------------------------
-                   RSVP BUTTON (with tick + toggle)
-                ----------------------------------------------------------- */}
-                <TouchableOpacity
-                  style={[
-                    styles.rsvpButton,
-                    isRSVPed && styles.rsvpButtonActive,
-                  ]}
-                  onPress={() => {
-                    if (!isRSVPed) {
-                      rsvpEvent(event);
-                      showToast("RSVP sent");
-                    } else {
-                      unRsvpEvent(event.id);
-                      showToast("RSVP removed");
-                    }
+              {/* INFO — plain, no emojis */}
+              <Text style={[styles.info, { color: theme.textSecondary }]}>
+                {event.date}
+              </Text>
+              <Text style={[styles.info, { color: theme.textSecondary }]}>
+                {event.time}
+              </Text>
+              <Text style={[styles.info, { color: theme.textSecondary }]}>
+                {event.location}
+              </Text>
+
+              {/* RSVP BUTTON */}
+              <TouchableOpacity
+                style={[
+                  styles.rsvpButton,
+                  {
+                    backgroundColor: event.rsvped
+                      ? theme.rsvpButtonInactive
+                      : theme.rsvpButton,
+                  },
+                ]}
+                onPress={() => toggleRSVP(event.id)}
+              >
+                <Text
+                  style={{
+                    color: event.rsvped
+                      ? theme.rsvpButtonInactiveText
+                      : theme.rsvpButtonText,
+                    fontWeight: "700",
                   }}
                 >
-                  {isRSVPed ? (
-                    <Text style={[styles.rsvpText, styles.rsvpTextActive]}>
-                      RSVP’d <Text style={styles.tickIcon}>✓</Text>
-                    </Text>
-                  ) : (
-                    <Text style={styles.rsvpText}>RSVP</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            );
-          })
+                  {event.rsvped ? "✓ RSVP’d" : "RSVP"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          ))
         )}
       </ScrollView>
-
-      {/* -----------------------------------------------------------
-         TOAST (Centered, slide + fade)
-      ----------------------------------------------------------- */}
-      <Animated.View
-        style={[
-          styles.toast,
-          {
-            opacity: toastOpacity,
-            transform: [{ translateY: toastTranslate }],
-          },
-        ]}
-      >
-        <Text style={styles.toastText}>{toast}</Text>
-      </Animated.View>
     </SafeAreaView>
   );
 }
 
 /* -----------------------------------------------------------
-   STYLES
------------------------------------------------------------ */
+   STYLES — layout only
+------------------------------------------------------------ */
 const styles = StyleSheet.create({
-  safeContainer: { flex: 1, backgroundColor: "#fff" },
+  safeContainer: { flex: 1 },
   container: { flex: 1 },
   content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 80 },
 
-  header: { fontSize: 28, fontWeight: "700", marginBottom: 20 },
+  header: {
+    fontSize: 28,
+    fontWeight: "700",
+    marginBottom: 20,
+  },
 
-  /* SUMMARY */
   statsRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 20,
   },
+
   statBox: {
     width: "30%",
-    backgroundColor: "#f5f5f5",
     paddingVertical: 18,
     borderRadius: 14,
     alignItems: "center",
+    borderWidth: 1,
   },
-  statNumber: { fontSize: 22, fontWeight: "700", marginBottom: 4 },
-  statLabel: { fontSize: 14, color: "#555" },
 
-  /* FILTERS */
+  statNumber: { fontSize: 22, fontWeight: "700", marginBottom: 4 },
+
+  statLabel: { fontSize: 14 },
+
   filterRow: { flexDirection: "row", marginBottom: 20 },
+
   filterChip: {
-    backgroundColor: "#eee",
     paddingHorizontal: 14,
     paddingVertical: 6,
     borderRadius: 16,
     marginRight: 10,
   },
-  filterChipActive: { backgroundColor: "#000" },
-  filterText: { fontSize: 13, fontWeight: "600", color: "#555" },
-  filterTextActive: { color: "#fff" },
 
   emptyText: {
     marginTop: 40,
     textAlign: "center",
-    color: "#777",
     fontSize: 16,
   },
 
-  /* EVENT CARD */
-  savedItem: {
-    backgroundColor: "#fff",
+  card: {
+    width: "100%",
+    borderRadius: 14,
     padding: 16,
-    borderRadius: 16,
-    marginBottom: 18,
-    shadowColor: "#000",
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 2,
-  },
-
-  titleRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  title: { fontSize: 16, fontWeight: "700", color: "#111", flexShrink: 1 },
-
-  time: { fontSize: 13, color: "#666" },
-  location: { fontSize: 12, color: "#888", marginBottom: 10 },
-
-  /* RSVP BUTTON */
-  rsvpButton: {
-    backgroundColor: "#000",
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    alignSelf: "flex-start",
-    minWidth: 150,
-
-    justifyContent: "center",
-    alignItems: "center",
-    flexDirection: "row",
-  },
-  rsvpButtonActive: {
-    backgroundColor: "#2ECC71",
-  },
-
-  rsvpText: {
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
-    textAlign: "center",
-  },
-  rsvpTextActive: {
-    color: "#fff",
-  },
-
-  tickIcon: {
-    fontSize: 15,
-    fontWeight: "900",
-    color: "#fff",
+    marginBottom: 16,
+    borderWidth: 1,
   },
 
   liveTag: {
-    fontSize: 12,
-    fontWeight: "700",
-    backgroundColor: "#FF3B30",
-    color: "#fff",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    position: "absolute",
+    top: 12,
+    right: 12,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
     borderRadius: 10,
   },
 
-  /* TOAST */
-  toast: {
-    position: "absolute",
-    top: "50%",
-    left: 0,
-    right: 0,
+  title: { fontSize: 17, fontWeight: "700", marginBottom: 6 },
+
+  info: { fontSize: 14, marginBottom: 3 },
+
+  rsvpButton: {
+    marginTop: 14,
+    paddingVertical: 10,
+    borderRadius: 10,
     alignItems: "center",
-    transform: [{ translateY: -30 }],
-  },
-  toastText: {
-    backgroundColor: "#000",
-    color: "#fff",
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 20,
-    fontWeight: "600",
-    overflow: "hidden",
   },
 });
 

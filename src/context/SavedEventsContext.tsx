@@ -10,17 +10,15 @@ interface Event {
   description: string;
   image?: string;
   live?: boolean;
-  rsvped?: boolean; // NEW FLAG
+  rsvped?: boolean;
 }
 
 interface SavedEventsContextType {
   savedEvents: Event[];
-  rsvpedEvents: Event[]; // NEW
+  rsvpedEvents: Event[];
   saveEvent: (event: Event) => void;
   removeEvent: (eventId: string) => void;
-
-  rsvpEvent: (event: Event) => void; // NEW
-  unRsvpEvent: (eventId: string) => void; // FUTURE OPTION
+  toggleRSVP: (eventId: string) => void; // ⭐ FIXED
 }
 
 const SavedEventsContext = createContext<SavedEventsContextType | undefined>(
@@ -31,9 +29,9 @@ export const SavedEventsProvider = ({ children }: { children: ReactNode }) => {
   const [savedEvents, setSavedEvents] = useState<Event[]>([]);
   const [rsvpedEvents, setRsvpedEvents] = useState<Event[]>([]);
 
-  /* --------------------------------------------------------
-     SAVE EVENT (same as your original logic)
-  -------------------------------------------------------- */
+  /* -----------------------------
+       SAVE EVENT 
+  ------------------------------ */
   const saveEvent = (event: Event) => {
     setSavedEvents((prev) => {
       if (prev.some((e) => e.id === event.id)) return prev;
@@ -41,43 +39,42 @@ export const SavedEventsProvider = ({ children }: { children: ReactNode }) => {
     });
   };
 
-  /* --------------------------------------------------------
-     REMOVE EVENT (same as before, but remove from RSVP too)
-  -------------------------------------------------------- */
+  /* -----------------------------
+       REMOVE EVENT 
+  ------------------------------ */
   const removeEvent = (eventId: string) => {
-    setSavedEvents((prev) => prev.filter((event) => event.id !== eventId));
-    setRsvpedEvents((prev) => prev.filter((event) => event.id !== eventId));
-  };
-
-  /* --------------------------------------------------------
-     RSVP EVENT
-     - mark saved event as rsvped
-     - add to rsvpedEvents list
-  -------------------------------------------------------- */
-  const rsvpEvent = (event: Event) => {
-    // update saved events
-    setSavedEvents((prev) =>
-      prev.map((ev) => (ev.id === event.id ? { ...ev, rsvped: true } : ev))
-    );
-
-    // add to RSVP list if not already there
-    setRsvpedEvents((prev) => {
-      if (prev.some((ev) => ev.id === event.id)) return prev;
-      return [...prev, { ...event, rsvped: true }];
-    });
-  };
-
-  /* --------------------------------------------------------
-     UN-RSVP EVENT (not used yet but safe to have)
-  -------------------------------------------------------- */
-  const unRsvpEvent = (eventId: string) => {
-    // update saved events
-    setSavedEvents((prev) =>
-      prev.map((ev) => (ev.id === eventId ? { ...ev, rsvped: false } : ev))
-    );
-
-    // remove from rsvped list
+    setSavedEvents((prev) => prev.filter((ev) => ev.id !== eventId));
     setRsvpedEvents((prev) => prev.filter((ev) => ev.id !== eventId));
+  };
+
+  /* -----------------------------
+       ⭐ TOGGLE RSVP — universal
+  ------------------------------ */
+  const toggleRSVP = (eventId: string) => {
+    setSavedEvents((prev) => {
+      return prev.map((ev) => {
+        if (ev.id === eventId) {
+          const updated = { ...ev, rsvped: !ev.rsvped };
+
+          // update RSVP list accordingly
+          if (updated.rsvped) {
+            // add
+            setRsvpedEvents((rsvpList) => {
+              if (rsvpList.some((e) => e.id === eventId)) return rsvpList;
+              return [...rsvpList, updated];
+            });
+          } else {
+            // remove
+            setRsvpedEvents((rsvpList) =>
+              rsvpList.filter((e) => e.id !== eventId)
+            );
+          }
+
+          return updated;
+        }
+        return ev;
+      });
+    });
   };
 
   return (
@@ -87,8 +84,7 @@ export const SavedEventsProvider = ({ children }: { children: ReactNode }) => {
         rsvpedEvents,
         saveEvent,
         removeEvent,
-        rsvpEvent,
-        unRsvpEvent,
+        toggleRSVP, // ⭐ EXPOSED HERE
       }}
     >
       {children}
