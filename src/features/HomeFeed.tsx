@@ -5,16 +5,15 @@ import {
   StyleSheet,
   ListRenderItemInfo,
   Text,
+  TextInput,
   TouchableOpacity,
   ScrollView,
-  Pressable,
 } from 'react-native';
 import FeedItem from './FeedItem';
-import SearchBar from './SearchBar';
 import EventDetailsModal from './EventDetailsModal';
 import Icon from '../components/Icon';
 import { Event } from '../constants/Events';
-import { getSavedEvents } from '../constants/storage';
+import { getSavedEvents, saveEvent, removeSavedEvent, subscribeSavedEvents, getRsvpedEvents, subscribeRsvpedEvents } from '../constants/storage';
 
 export type HomeFeedItem = {
   id: string;
@@ -31,53 +30,42 @@ export type HomeFeedItem = {
 type HomeFeedProps = {
   events?: HomeFeedItem[];
   onFilteredChange?: (items: HomeFeedItem[]) => void;
+  filterActive?: boolean;
+  showSearch?: boolean;
 };
 
-const SAMPLE_DATA: HomeFeedItem[] = [
-  {
-    id: 'evt-1',
-    title: 'Sunset Rooftop Jam',
-    subtitle: 'Live music + open mic',
-    location: 'Midtown Commons',
-    image: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=900&q=60',
-    when: 'today',
-    tags: ['Music', 'Community'],
-    description: 'Sunset session with local bands and an open mic to close the night.',
-  },
-  {
-    id: 'evt-2',
-    title: 'Founder Coffee Chat',
-    subtitle: 'Meet local builders',
-    location: 'Grounded Beans',
-    image: 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=900&q=60',
-    when: 'tomorrow',
-    tags: ['Networking', 'Career'],
-    description: 'Casual coffee with founders sharing early-stage lessons and Q&A.',
-  },
-  {
-    id: 'evt-3',
-    title: 'Trail Cleanup + Picnic',
-    subtitle: 'Give back outdoors',
-    location: 'Riverside Park',
-    image: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900&q=60',
-    when: 'later',
-    tags: ['Outdoors', 'Community'],
-    description: 'Bring gloves and energy—quick cleanup followed by a laid-back picnic.',
-  },
-];
+const WHEN_OPTIONS: Array<'today' | 'tomorrow' | 'later'> = ['today', 'tomorrow', 'later'];
 
-export default function HomeFeed({ events, onFilteredChange }: HomeFeedProps) {
+const toFeedItemFromEvent = (ev: Event): HomeFeedItem => ({
+  id: ev.id,
+  title: ev.title,
+  subtitle: ev.date,
+  location: ev.location,
+  image: ev.image,
+  when: undefined,
+  tags: ev.category ? [ev.category] : [],
+  description: ev.description,
+  original: ev,
+});
+
+export default function HomeFeed({
+  events,
+  onFilteredChange,
+  filterActive,
+  showSearch = true,
+}: HomeFeedProps) {
   const [selected, setSelected] = useState<HomeFeedItem | null>(null);
-  const [whenFilter, setWhenFilter] = useState<'today' | 'tomorrow' | 'later' | 'all'>('all');
-  const [showWhenMenu, setShowWhenMenu] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
+  const [timeFilters, setTimeFilters] = useState<Array<'today' | 'tomorrow' | 'later'>>([]);
   const [searchText, setSearchText] = useState('');
-  const [showTags, setShowTags] = useState(false);
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [savedIds, setSavedIds] = useState<string[]>([]);
+  const [rsvpedIds, setRsvpedIds] = useState<string[]>([]);
 
   useEffect(() => {
     let mounted = true;
+    const unsubscribe = subscribeSavedEvents((list) => {
+      if (mounted) setSavedIds(list.map((s) => s.id));
+    });
     (async () => {
       try {
         const list = await getSavedEvents();
@@ -89,26 +77,84 @@ export default function HomeFeed({ events, onFilteredChange }: HomeFeedProps) {
     })();
     return () => {
       mounted = false;
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    const unsubscribe = subscribeRsvpedEvents((list) => {
+      if (mounted) setRsvpedIds(list.map((r) => r.id));
+    });
+    (async () => {
+      try {
+        const list = await getRsvpedEvents();
+        if (!mounted) return;
+        setRsvpedIds(list.map((r) => r.id));
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => {
+      mounted = false;
+      unsubscribe();
     };
   }, []);
 
   const tags = useMemo(() => ['Art','Campus','Community','Food','Music','Sports'], []);
+  const selectAllTimes = () => setTimeFilters([]);
+  const toggleTime = (when: 'today' | 'tomorrow' | 'later') => {
+    setTimeFilters((prev) => {
+      const exists = prev.includes(when);
+      const next = exists ? prev.filter((w) => w !== when) : [...prev, when];
+      return next;
+    });
+  };
 
   const toggleTag = (tag: string) => {
     setSelectedTags((t) => (t.includes(tag) ? t.filter((x) => x !== tag) : [...t, tag]));
   };
 
-  // prefer events passed from parent; otherwise use internal sample data
-  const dataSource = events && events.length ? events : SAMPLE_DATA;
+  const saveItem = (item: HomeFeedItem) => {
+    if (!item.id) return;
+    setSavedIds((prev) => {
+      if (prev.includes(item.id as string)) return prev;
+      try {
+        // eslint-disable-next-line no-console
+        console.log('[HomeFeed] saveItem', item.id);
+        saveEvent({ id: item.id, title: item.title, subtitle: item.subtitle, location: item.location, image: item.image });
+      } catch (e) {
+        // ignore
+      }
+      return [item.id, ...prev];
+    });
+  };
+
+  const unsaveItem = (item: HomeFeedItem) => {
+    if (!item.id) return;
+    setSavedIds((prev) => {
+      if (!prev.includes(item.id as string)) return prev;
+      try {
+        // eslint-disable-next-line no-console
+        console.log('[HomeFeed] unsaveItem', item.id);
+        removeSavedEvent(item.id as string);
+      } catch (e) {
+        // ignore
+      }
+      return prev.filter((x) => x !== item.id);
+    });
+  };
+
+  const dataSource = useMemo(() => (events && events.length ? events : []), [events]);
 
   const filteredData = useMemo(() => {
     return dataSource.filter((it) => {
-      if (whenFilter !== 'all' && it.when !== whenFilter) return false;
+      if (timeFilters.length && it.when && !timeFilters.includes(it.when)) return false;
       if (searchText && !it.title.toLowerCase().includes(searchText.toLowerCase())) return false;
       if (selectedTags.length > 0 && !(it.tags || []).some((tg) => selectedTags.includes(tg))) return false;
       return true;
     });
-  }, [whenFilter, searchText, selectedTags, dataSource]);
+  }, [timeFilters, searchText, selectedTags, dataSource]);
 
   // Notify parent when filtered data changes so the Plan view can mirror the same items
   useEffect(() => {
@@ -127,60 +173,55 @@ export default function HomeFeed({ events, onFilteredChange }: HomeFeedProps) {
       onPress={() => setSelected(item)}
       onShare={() => console.log('Share', item.id)}
       saved={savedIds.includes(item.id)}
+      rsvped={rsvpedIds.includes(item.id)}
+      onSwipeRight={() => saveItem(item)}
+      onSwipeLeft={() => unsaveItem(item)}
     />
   );
 
   return (
     <View style={styles.container}>
-      {/* Segmented control is handled by parent so it remains fixed above content */}
-      {/* Top controls */}
-      <View style={styles.topRow}>
-        <View style={styles.leftControl}>
-          <TouchableOpacity onPress={() => setShowWhenMenu((s) => !s)} activeOpacity={0.8}>
-            <Text style={styles.eventsLabel}>Events</Text>
-          </TouchableOpacity>
-
-          {showWhenMenu ? (
-            <View style={styles.whenMenu}>
-              <TouchableOpacity onPress={() => { setWhenFilter('today'); setShowWhenMenu(false); }} style={[styles.whenItem, whenFilter === 'today' && styles.whenActive]}>
-                <Text style={[styles.whenText, whenFilter === 'today' && styles.whenTextActive]}>Today</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setWhenFilter('tomorrow'); setShowWhenMenu(false); }} style={[styles.whenItem, whenFilter === 'tomorrow' && styles.whenActive]}>
-                <Text style={[styles.whenText, whenFilter === 'tomorrow' && styles.whenTextActive]}>Tomorrow</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setWhenFilter('later'); setShowWhenMenu(false); }} style={[styles.whenItem, whenFilter === 'later' && styles.whenActive]}>
-                <Text style={[styles.whenText, whenFilter === 'later' && styles.whenTextActive]}>Later</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => { setWhenFilter('all'); setShowWhenMenu(false); }} style={[styles.whenItem, whenFilter === 'all' && styles.whenActive]}>
-                <Text style={[styles.whenText, whenFilter === 'all' && styles.whenTextActive]}>All</Text>
-              </TouchableOpacity>
-            </View>
-          ) : null}
-        </View>
-
-        <View style={styles.rightControls}>
-          <TouchableOpacity onPress={() => { setShowSearch((s) => !s); setShowTags(false); }} style={styles.iconBtn}>
-            <Icon name="magnify" size={20} color="#111" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => { setShowTags((s) => !s); setShowSearch(false); }} style={styles.iconBtn}>
-            <Icon name="filter-variant" size={20} color="#111" />
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      {showWhenMenu ? (
-        <Pressable style={StyleSheet.absoluteFill} onPress={() => setShowWhenMenu(false)} />
-      ) : null}
-
       {showSearch ? (
-        <View style={styles.searchWrap}>
-          <SearchBar value={searchText} onChangeText={setSearchText} placeholder="Search events and restaurants" />
+        <View style={styles.searchContainer}>
+          <View style={styles.searchShell}>
+            <Icon name="magnify" size={18} color="#9AA0A6" />
+            <TextInput
+              value={searchText}
+              onChangeText={setSearchText}
+              placeholder="Search here"
+              placeholderTextColor="#9AA0A6"
+              style={styles.searchInput}
+            />
+          </View>
         </View>
       ) : null}
 
-      {showTags ? (
+      {filterActive ? (
         <View style={styles.tagsWrap}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tagsScroll}>
+            <TouchableOpacity
+              key="all"
+              style={[styles.tagPill, timeFilters.length === 0 && styles.tagPillActive]}
+              onPress={selectAllTimes}
+              activeOpacity={0.85}
+            >
+              <Text style={[styles.tagText, timeFilters.length === 0 && styles.tagTextActive]}>All</Text>
+            </TouchableOpacity>
+            {WHEN_OPTIONS.map((when) => {
+              const active = timeFilters.includes(when);
+              return (
+                <TouchableOpacity
+                  key={when}
+                  style={[styles.tagPill, active && styles.tagPillActive]}
+                  onPress={() => toggleTime(when)}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.tagText, active && styles.tagTextActive]}>
+                    {when === 'today' ? 'Today' : when === 'tomorrow' ? 'Tomorrow' : 'Later'}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
             {tags.map((tag) => {
               const active = selectedTags.includes(tag);
               return (
@@ -201,7 +242,17 @@ export default function HomeFeed({ events, onFilteredChange }: HomeFeedProps) {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={() => (
           <View style={styles.sectionHeaderWrap}>
-            <Text style={styles.sectionHeader}>{whenFilter === 'all' ? 'All Events' : whenFilter === 'today' ? 'Today' : whenFilter === 'tomorrow' ? 'Tomorrow' : 'Later'}</Text>
+            <Text style={styles.sectionHeader}>
+              {timeFilters.length === 0
+                ? 'All Events'
+                : timeFilters.length === 1
+                ? timeFilters[0] === 'today'
+                  ? 'Today'
+                  : timeFilters[0] === 'tomorrow'
+                  ? 'Tomorrow'
+                  : 'Later'
+                : 'Filtered Events'}
+            </Text>
           </View>
         )}
       />
@@ -215,6 +266,10 @@ export default function HomeFeed({ events, onFilteredChange }: HomeFeedProps) {
         description={selected?.description || selected?.original?.description}
         location={selected?.location}
         image={selected?.image}
+        tags={selected?.tags}
+        onRelatedSelect={(ev) => {
+          setSelected(toFeedItemFromEvent(ev));
+        }}
         onSavedChange={(id, saved) => {
           if (!id) return;
           setSavedIds((prev) => {
@@ -245,68 +300,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#111',
   },
-  topRow: {
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 6,
+    paddingBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 30,
-    paddingTop: 5,
-    paddingBottom: 6,
-  },
-  leftControl: {
-    flexDirection: 'column',
     position: 'relative',
   },
-  eventsLabel: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#111',
-  },
-  whenMenu: {
-    position: 'absolute',
-    top: 44,
-    left: 0,
-    minWidth: 120,
-    marginTop: 8,
-    backgroundColor: '#fff',
-    padding: 8,
-    borderRadius: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    elevation: 8,
-    zIndex: 2000,
-  },
-  whenItem: {
-    paddingVertical: 6,
-    paddingHorizontal: 10,
-  },
-  whenText: {
-    color: '#222',
-  },
-  whenActive: {
-    backgroundColor: '#f0f4ff',
-    borderRadius: 6,
-  },
-  whenTextActive: {
-    color: '#2b7cff',
-    fontWeight: '600',
-  },
-  rightControls: {
+  searchShell: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: '#e8e8eb',
+    height: 48,
+    paddingHorizontal: 14,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
-  iconBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 10,
-    alignItems: 'center',
-    justifyContent: 'center',
+  searchInput: {
+    flex: 1,
     marginLeft: 8,
-    backgroundColor: '#f2f3f5',
-  },
-  searchWrap: {
-    paddingHorizontal: 12,
-    paddingBottom: 8,
+    fontSize: 15,
+    color: '#222',
   },
   tagsWrap: {
     paddingHorizontal: 12,
@@ -323,12 +345,12 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   tagPillActive: {
-    backgroundColor: '#2b7cff',
+    backgroundColor: '#ffb26b',
   },
   tagText: {
     color: '#333',
   },
   tagTextActive: {
-    color: '#fff',
+    color: '#8c3d00',
   },
 });

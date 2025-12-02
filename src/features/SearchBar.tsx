@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, TextInput, StyleSheet } from 'react-native';
+import Icon from '../components/Icon';
 
 type Props = {
   value?: string;
@@ -10,13 +11,16 @@ type Props = {
 export default function SearchBar({ value, onChangeText, placeholder }: Props) {
   return (
     <View style={styles.container}>
-      <TextInput
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder || 'Search events & restaurants'}
-        placeholderTextColor="#9AA0A6"
-        style={styles.input}
-      />
+      <View style={styles.inputShell}>
+        <Icon name="magnify" size={18} color="#7b8087" />
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder || 'Search'}
+          placeholderTextColor="#8c9299"
+          style={styles.input}
+        />
+      </View>
     </View>
   );
 }
@@ -28,12 +32,20 @@ const styles = StyleSheet.create({
     paddingBottom: 6,
     backgroundColor: 'transparent',
   },
-  input: {
+  inputShell: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: '#f1f3f5',
     height: 44,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    fontSize: 15,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#dfe3e7',
+    paddingHorizontal: 12,
+  },
+  input: {
+    flex: 1,
+    marginLeft: 8,
     color: '#222',
+    fontSize: 15,
   },
 });

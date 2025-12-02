@@ -1,318 +1,193 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import FeedItem from '../features/FeedItem';
+import EventDetailsModal from '../features/EventDetailsModal';
+import { EVENTS } from '../constants/Events';
 import {
-  View,
-  Text,
-  ScrollView,
-  StyleSheet,
-  TouchableOpacity,
-  useColorScheme,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { useSavedEvents } from "../context/SavedEventsContext";
-
-/* -----------------------------------------------------------
-   HYBRID THEME
------------------------------------------------------------- */
-
-const lightTheme = {
-  background: "#FAFAFA",
-  cardBackground: "#FFFFFF",
-  textPrimary: "#222222",
-  textSecondary: "#555555",
-  statBox: "#F5F5F5",
-  chipBackground: "#EEEEEE",
-  chipActiveBackground: "#FF7A30",
-  chipText: "#444444",
-  chipTextActive: "#FFFFFF",
-  border: "#E5E5E5",
-  rsvpButton: "#FF7A30",
-  rsvpButtonText: "#FFF",
-  rsvpButtonInactive: "#FFF4EC",
-  rsvpButtonInactiveText: "#FF7A30",
-  liveBg: "#FF3B30",
-  liveText: "#FFFFFF",
-};
-
-const darkTheme = {
-  background: "#0D0D0F",
-  cardBackground: "#18181C",
-  textPrimary: "#FFFFFF",
-  textSecondary: "#B5B5B8",
-  statBox: "#1F1F24",
-  chipBackground: "#22252A",
-  chipActiveBackground: "#1A73E8",
-  chipText: "#B5B5B8",
-  chipTextActive: "#FFFFFF",
-  border: "#2A2C30",
-  rsvpButton: "#1A73E8",
-  rsvpButtonText: "#FFFFFF",
-  rsvpButtonInactive: "#102A47",
-  rsvpButtonInactiveText: "#70A9FF",
-  liveBg: "#FF453A",
-  liveText: "#FFFFFF",
-};
+  getSavedEvents,
+  getRsvpedEvents,
+  SavedEvent,
+  subscribeSavedEvents,
+  subscribeRsvpedEvents,
+  removeSavedEvent,
+  removeRsvpedEvent,
+} from '../constants/storage';
 
 export default function SavedScreen() {
-  const { savedEvents, toggleRSVP } = useSavedEvents();
-  const scheme = useColorScheme();
-  const theme = scheme === "dark" ? darkTheme : lightTheme;
+  const [savedItems, setSavedItems] = useState<SavedEvent[]>([]);
+  const [rsvpedItems, setRsvpedItems] = useState<SavedEvent[]>([]);
+  const [activeTab, setActiveTab] = useState<'saved' | 'rsvped'>('saved');
+  const [selected, setSelected] = useState<SavedEvent | null>(null);
 
-  const [filter, setFilter] = useState<"all" | "rsvped" | "past">("all");
+  const handleSwipeRemove = (item: SavedEvent) => {
+    if (!item.id) return;
+    if (activeTab === 'saved') {
+      setSavedItems((prev) => prev.filter((x) => x.id !== item.id));
+      removeSavedEvent(item.id);
+    } else {
+      setRsvpedItems((prev) => prev.filter((x) => x.id !== item.id));
+      removeRsvpedEvent(item.id);
+    }
+    if (selected?.id === item.id) {
+      setSelected(null);
+    }
+  };
 
-  const TODAY = new Date("Dec 2, 2025");
-  const parseDate = (d: string) => new Date(d);
+  const selectedFull = useMemo(() => {
+    if (!selected) return null;
+    const event = EVENTS.find((e) => e.id === selected.id);
+    return {
+      ...selected,
+      title: selected.title || event?.title,
+      subtitle: selected.subtitle || event?.date,
+      location: selected.location || event?.location,
+      image: selected.image || event?.image,
+      description: event?.description,
+      tags: event?.category ? [event.category] : undefined,
+    };
+  }, [selected]);
 
-  const filteredList = useMemo(() => {
-    if (filter === "all") return savedEvents;
-    if (filter === "rsvped") return savedEvents.filter((ev) => ev.rsvped);
-    if (filter === "past")
-      return savedEvents.filter((ev) => parseDate(ev.date) < TODAY);
-    return savedEvents;
-  }, [filter, savedEvents]);
+  useEffect(() => {
+    let mounted = true;
 
-  const savedCount = savedEvents.length;
-  const rsvpCount = savedEvents.filter((ev) => ev.rsvped).length;
-  const todayCount = savedEvents.filter(
-    (ev) => parseDate(ev.date).toDateString() === TODAY.toDateString()
-  ).length;
+    const loadSaved = async () => {
+      const [savedList, rsvpedList] = await Promise.all([getSavedEvents(), getRsvpedEvents()]);
+      if (!mounted) return;
+      setSavedItems(savedList);
+      setRsvpedItems(rsvpedList);
+    };
+
+    loadSaved();
+    const unsubSaved = subscribeSavedEvents((list) => {
+      if (mounted) setSavedItems(list);
+    });
+    const unsubRsvped = subscribeRsvpedEvents((list) => {
+      if (mounted) setRsvpedItems(list);
+    });
+
+    return () => {
+      mounted = false;
+      unsubSaved();
+      unsubRsvped();
+    };
+  }, []);
 
   return (
-    <SafeAreaView
-      style={[styles.safeContainer, { backgroundColor: theme.background }]}
-    >
-      <ScrollView
-        style={styles.container}
-        contentContainerStyle={styles.content}
-      >
-        <Text style={[styles.header, { color: theme.textPrimary }]}>
-          Saved Events
-        </Text>
-
-        {/* STATS */}
-        <View style={styles.statsRow}>
-          <View
-            style={[
-              styles.statBox,
-              { backgroundColor: theme.statBox, borderColor: theme.border },
-            ]}
+    <View style={styles.container}>
+      <View style={styles.tabWrap}>
+        <View style={styles.tabBg}>
+          <TouchableOpacity
+            style={[styles.tabBtn, styles.tabLeft, activeTab === 'saved' && styles.tabBtnActive]}
+            onPress={() => setActiveTab('saved')}
+            activeOpacity={0.9}
           >
-            <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
-              {rsvpCount}
-            </Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-              RSVPed
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.statBox,
-              { backgroundColor: theme.statBox, borderColor: theme.border },
-            ]}
+            <Text style={[styles.tabText, activeTab === 'saved' && styles.tabTextActive]}>Saved</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.tabBtn, styles.tabRight, activeTab === 'rsvped' && styles.tabBtnActive]}
+            onPress={() => setActiveTab('rsvped')}
+            activeOpacity={0.9}
           >
-            <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
-              {savedCount}
-            </Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Saved
-            </Text>
-          </View>
-          <View
-            style={[
-              styles.statBox,
-              { backgroundColor: theme.statBox, borderColor: theme.border },
-            ]}
-          >
-            <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
-              {todayCount}
-            </Text>
-            <Text style={[styles.statLabel, { color: theme.textSecondary }]}>
-              Today
-            </Text>
-          </View>
+            <Text style={[styles.tabText, activeTab === 'rsvped' && styles.tabTextActive]}>RSVP'd</Text>
+          </TouchableOpacity>
         </View>
-
-        {/* FILTERS */}
-        <View style={styles.filterRow}>
-          {["all", "rsvped", "past"].map((key) => {
-            const isActive = filter === key;
-            const label =
-              key === "all" ? "All" : key === "rsvped" ? "RSVPed" : "Past";
-
-            return (
-              <TouchableOpacity
-                key={key}
-                onPress={() => setFilter(key as any)}
-                style={[
-                  styles.filterChip,
-                  {
-                    backgroundColor: isActive
-                      ? theme.chipActiveBackground
-                      : theme.chipBackground,
-                  },
-                ]}
-              >
-                <Text
-                  style={{
-                    color: isActive ? theme.chipTextActive : theme.chipText,
-                    fontWeight: "600",
-                  }}
-                >
-                  {label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-
-        {/* EVENT LIST */}
-        {filteredList.length === 0 ? (
-          <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-            No events available.
-          </Text>
-        ) : (
-          filteredList.map((event) => (
-            <View
-              key={event.id}
-              style={[
-                styles.card,
-                {
-                  backgroundColor: theme.cardBackground,
-                  borderColor: theme.border,
-                },
-              ]}
-            >
-              {/* LIVE TAG — top right */}
-              {event.live && (
-                <View
-                  style={[styles.liveTag, { backgroundColor: theme.liveBg }]}
-                >
-                  <Text style={{ color: theme.liveText, fontSize: 11 }}>
-                    LIVE
-                  </Text>
-                </View>
-              )}
-
-              {/* TITLE */}
-              <Text style={[styles.title, { color: theme.textPrimary }]}>
-                {event.title}
-              </Text>
-
-              {/* INFO — plain, no emojis */}
-              <Text style={[styles.info, { color: theme.textSecondary }]}>
-                {event.date}
-              </Text>
-              <Text style={[styles.info, { color: theme.textSecondary }]}>
-                {event.time}
-              </Text>
-              <Text style={[styles.info, { color: theme.textSecondary }]}>
-                {event.location}
-              </Text>
-
-              {/* RSVP BUTTON */}
-              <TouchableOpacity
-                style={[
-                  styles.rsvpButton,
-                  {
-                    backgroundColor: event.rsvped
-                      ? theme.rsvpButtonInactive
-                      : theme.rsvpButton,
-                  },
-                ]}
-                onPress={() => toggleRSVP(event.id)}
-              >
-                <Text
-                  style={{
-                    color: event.rsvped
-                      ? theme.rsvpButtonInactiveText
-                      : theme.rsvpButtonText,
-                    fontWeight: "700",
-                  }}
-                >
-                  {event.rsvped ? "✓ RSVP’d" : "RSVP"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          ))
+      </View>
+      <Text style={styles.header}>{activeTab === 'saved' ? 'Saved Events' : "RSVP'd Events"}</Text>
+      <FlatList
+        data={activeTab === 'saved' ? savedItems : rsvpedItems}
+        keyExtractor={(i) => i.id}
+        renderItem={({ item }) => (
+          <FeedItem
+            id={item.id}
+            title={item.title || ''}
+            subtitle={item.subtitle}
+            location={item.location}
+            image={item.image}
+            onPress={() => setSelected(item)}
+            onShare={() => {}}
+            saved={activeTab === 'saved'}
+            showHeart={true}
+            rsvped={activeTab === 'rsvped'}
+            onSwipeRight={() => handleSwipeRemove(item)}
+            onSwipeLeft={() => handleSwipeRemove(item)}
+          />
         )}
-      </ScrollView>
-    </SafeAreaView>
+        ListEmptyComponent={() => (
+          <Text style={styles.empty}>
+            {activeTab === 'saved' ? 'No saved events yet.' : "No RSVP'd events yet."}
+          </Text>
+        )}
+        contentContainerStyle={
+          (activeTab === 'saved' ? savedItems.length : rsvpedItems.length) === 0 ? styles.emptyWrap : undefined
+        }
+      />
+      <EventDetailsModal
+        visible={!!selectedFull}
+        onClose={() => setSelected(null)}
+        id={selectedFull?.id}
+        title={selectedFull?.title}
+        subtitle={selectedFull?.subtitle}
+        description={selectedFull?.description}
+        location={selectedFull?.location}
+        image={selectedFull?.image}
+        tags={selectedFull?.tags}
+        onRelatedSelect={(ev) => {
+          setSelected({
+            id: ev.id,
+            title: ev.title,
+            subtitle: ev.date,
+            location: ev.location,
+            image: ev.image,
+          });
+        }}
+      />
+    </View>
   );
 }
 
-/* -----------------------------------------------------------
-   STYLES — layout only
------------------------------------------------------------- */
 const styles = StyleSheet.create({
-  safeContainer: { flex: 1 },
-  container: { flex: 1 },
-  content: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 80 },
-
-  header: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 20,
+  container: { flex: 1, paddingTop: 80, backgroundColor: '#f6f7f9' },
+  tabWrap: {
+    paddingHorizontal: 16,
+    paddingTop: 18,
+    paddingBottom: 10,
   },
-
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-
-  statBox: {
-    width: "30%",
-    paddingVertical: 18,
-    borderRadius: 14,
-    alignItems: "center",
+  tabBg: {
+    flexDirection: 'row',
+    backgroundColor: '#f5f5f7',
+    borderRadius: 999,
+    padding: 6,
     borderWidth: 1,
+    borderColor: '#e3e3e7',
   },
-
-  statNumber: { fontSize: 22, fontWeight: "700", marginBottom: 4 },
-
-  statLabel: { fontSize: 14 },
-
-  filterRow: { flexDirection: "row", marginBottom: 20 },
-
-  filterChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 16,
-    marginRight: 10,
+  tabBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderRadius: 999,
   },
-
-  emptyText: {
-    marginTop: 40,
-    textAlign: "center",
-    fontSize: 16,
-  },
-
-  card: {
-    width: "100%",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
+  tabLeft: { marginRight: 6 },
+  tabRight: { marginLeft: 6 },
+  tabBtnActive: {
+    backgroundColor: '#fff8f2',
+    shadowColor: '#f59e42',
+    shadowOpacity: 0.16,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
     borderWidth: 1,
+    borderColor: '#ffd9b0',
   },
-
-  liveTag: {
-    position: "absolute",
-    top: 12,
-    right: 12,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
+  tabText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#666',
   },
-
-  title: { fontSize: 17, fontWeight: "700", marginBottom: 6 },
-
-  info: { fontSize: 14, marginBottom: 3 },
-
-  rsvpButton: {
-    marginTop: 14,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
+  tabTextActive: {
+    color: '#8c3d00',
   },
+  header: { fontSize: 20, fontWeight: '700', paddingHorizontal: 16, marginBottom: 8 },
+  empty: { textAlign: 'center', marginTop: 40, color: '#666' },
+  emptyWrap: { flex: 1 },
 });
-
-export {};

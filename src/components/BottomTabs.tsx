@@ -1,152 +1,216 @@
-// src/components/BottomTabs.tsx
+// the bottom tab bar
 
-import React from "react";
-import {
-  View,
-  TouchableOpacity,
-  Text,
-  StyleSheet,
-  useColorScheme,
-} from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
-import Icon from "./Icon";
+import React, { useRef } from 'react';
+import { View, TouchableOpacity, StyleSheet, Pressable, Animated } from 'react-native';
+import Icon from './Icon';
+
+type TabKey = 'home' | 'saved' | 'chat';
 
 type Props = {
-  activeTab: "home" | "saved" | "chat";
-  onPressHome: () => void;
-  onPressSaved: () => void;
-  onPressChat: () => void;
-};
-
-/* -----------------------------------------------------------
-   INLINE THEME (no external file needed)
------------------------------------------------------------- */
-
-const lightTheme = {
-  cardBackground: "#FFFFFF",
-  textPrimary: "#222",
-  textSecondary: "#777",
-  tabIconActive: "#FF7A30", // citrus orange
-  tabIconInactive: "#A0A0A0",
-  border: "#E5E5E5",
-};
-
-const darkTheme = {
-  cardBackground: "#18181C",
-  textPrimary: "#FFFFFF",
-  textSecondary: "#999",
-  tabIconActive: "#1A73E8", // neon blue
-  tabIconInactive: "#5A5F66",
-  border: "#2A2C30",
+  activeTab?: TabKey;
+  onPressHome?: () => void;
+  onPressSaved?: () => void;
+  onPressChat?: () => void;
+  searchVisible?: boolean;
+  onChangeSearchVisible?: (visible: boolean) => void;
+  filterActive?: boolean;
+  onRequestFilter?: () => void;
 };
 
 export default function BottomTabs({
-  activeTab,
+  activeTab = 'home',
   onPressHome,
   onPressSaved,
   onPressChat,
+  searchVisible = false,
+  onChangeSearchVisible,
+  filterActive = false,
+  onRequestFilter,
 }: Props) {
-  const insets = useSafeAreaInsets();
-  const scheme = useColorScheme();
-  const theme = scheme === "dark" ? darkTheme : lightTheme;
+  const tabs: Array<{ key: TabKey; icon: string; onPress?: () => void }> = [
+    { key: 'home', icon: 'home-variant', onPress: onPressHome },
+    { key: 'saved', icon: 'bookmark-multiple', onPress: onPressSaved },
+    { key: 'chat', icon: 'message-text', onPress: onPressChat },
+  ];
+
+  const showActions = activeTab === 'home';
 
   return (
-    <View
-      style={[
-        styles.container,
-        {
-          paddingBottom: insets.bottom || 10,
-          backgroundColor: theme.cardBackground,
-          borderTopColor: theme.border,
-        },
-      ]}
-    >
-      {/* HOME TAB */}
-      <TouchableOpacity style={styles.tab} onPress={onPressHome}>
-        <Icon
-          name={activeTab === "home" ? "home" : "home-outline"}
-          size={30}
-          color={
-            activeTab === "home" ? theme.tabIconActive : theme.tabIconInactive
-          }
-        />
-
-        {activeTab === "home" && (
-          <Text style={[styles.label, { color: theme.tabIconActive }]}>
-            Home
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      {/* SAVED TAB */}
-      <TouchableOpacity style={styles.tab} onPress={onPressSaved}>
-        <Icon
-          name={activeTab === "saved" ? "bookmark" : "bookmark-outline"}
-          size={30}
-          color={
-            activeTab === "saved" ? theme.tabIconActive : theme.tabIconInactive
-          }
-        />
-
-        {activeTab === "saved" && (
-          <Text style={[styles.label, { color: theme.tabIconActive }]}>
-            Saved
-          </Text>
-        )}
-      </TouchableOpacity>
-
-      {/* GROUP/CHAT TAB */}
-      <TouchableOpacity style={styles.tab} onPress={onPressChat}>
-        <Icon
-          name={activeTab === "chat" ? "chat" : "chat-outline"}
-          size={30}
-          color={
-            activeTab === "chat" ? theme.tabIconActive : theme.tabIconInactive
-          }
-        />
-
-        {activeTab === "chat" && (
-          <Text style={[styles.label, { color: theme.tabIconActive }]}>
-            Groups
-          </Text>
-        )}
-      </TouchableOpacity>
+    <View style={[styles.wrapper, { bottom: 12 }]}>
+      <View style={styles.bar}>
+        <View style={styles.segmentContainer}>
+          {tabs.map((tab) => {
+            const isActive = activeTab === tab.key;
+            return (
+              <TouchableOpacity
+                key={tab.key}
+                style={[styles.segmentBtn, isActive ? styles.segmentBtnActive : styles.segmentBtnInactive]}
+                onPress={tab.onPress}
+                activeOpacity={0.8}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Icon name={tab.icon} size={20} color={isActive ? '#8c3d00' : '#7d8289'} />
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {showActions ? (
+          <View style={styles.actionButtons}>
+            <ActionIconButton
+              name="filter-variant"
+              active={filterActive}
+              onPress={() => {
+                onPressHome?.();
+                onRequestFilter?.();
+              }}
+            />
+            <View style={styles.divider} />
+            <ActionIconButton
+              name="magnify"
+              active={searchVisible}
+              onPress={() => {
+                onPressHome?.();
+                onChangeSearchVisible?.(!searchVisible);
+              }}
+            />
+          </View>
+        ) : null}
+      </View>
     </View>
   );
 }
 
-/* -----------------------------------------------------------
-   STYLES
------------------------------------------------------------- */
+function ActionIconButton({ name, onPress, active = false }: { name: string; onPress?: () => void; active?: boolean }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const handlePressIn = () => {
+    Animated.spring(scale, { toValue: 0.9, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
+  };
+  const handlePressOut = () => {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 6 }).start();
+  };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
+      hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      style={({ pressed }) => [{ opacity: pressed ? 0.85 : 1 }]}
+    >
+      <Animated.View
+        style={[
+          styles.iconBtn,
+          active ? styles.iconBtnActive : styles.iconBtnInactive,
+          { transform: [{ scale }] },
+        ]}
+      >
+        <Icon name={name} size={20} color={active ? '#8c3d00' : '#7d8289'} />
+      </Animated.View>
+    </Pressable>
+  );
+}
 
 const styles = StyleSheet.create({
-  container: {
-    position: "absolute",
-    bottom: 0,
+  wrapper: {
+    position: 'absolute',
     left: 0,
     right: 0,
-    height: 90,
-    flexDirection: "row",
-    borderTopWidth: 1,
-    alignItems: "center",
-    justifyContent: "space-around",
-    shadowColor: "#000",
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 6,
+    alignItems: 'center',
+    pointerEvents: 'box-none',
   },
-
-  tab: {
+  bar: {
+    width: '92%',
+    maxWidth: 440,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 26,
+    paddingHorizontal: 6,
+    marginLeft: 12,
+    borderWidth: 1,
+    borderColor: '#e5e5e7',
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
+    height: 56,
+  },
+  segmentContainer: {
     flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
+    flexDirection: 'row',
+    backgroundColor: '#f4f5f7',
+    borderRadius: 26,
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#e3e4e7',
+    height: 56,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
-
-  label: {
-    fontSize: 13,
-    fontWeight: "700",
-    marginTop: 4,
+  segmentBtn: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    borderRadius: 18,
+  },
+  segmentBtnInactive: {
+    backgroundColor: '#f4f5f7',
+  },
+  segmentBtnActive: {
+    backgroundColor: '#fff8f2',
+    borderWidth: 1,
+    borderColor: '#ffd9b0',
+    shadowColor: '#f59e42',
+    shadowOpacity: 0.18,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
+  },
+  iconBtn: {
+    minWidth: 52,
+    height: 44,
+    paddingHorizontal: 12,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBtnInactive: {
+    backgroundColor: 'transparent',
+    borderWidth: 0,
+    borderColor: 'transparent',
+    shadowColor: 'transparent',
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
+    elevation: 0,
+  },
+  iconBtnActive: {
+    backgroundColor: '#fff4e6',
+    borderWidth: 1,
+    borderColor: '#ffd9b0',
+    shadowColor: '#f59e42',
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  divider: {
+    width: 1,
+    height: 24,
+    backgroundColor: '#e5e5e7',
+    marginHorizontal: 8,
   },
 });
-
-export {};
