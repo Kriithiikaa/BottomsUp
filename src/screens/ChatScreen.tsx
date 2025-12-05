@@ -55,9 +55,8 @@ export default function ChatScreen() {
 
   const confirmLeaveGroup = useCallback((group: Group) => {
     Alert.alert('Leave Group', `Leave ${group.name}?`, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Leave',
+        {
+        text: 'Leave', //does order guarantee Cancel will be on bottom right?-i think so for android but check for ios!
         style: 'destructive',
         onPress: () => {
           setGroups((prev) => prev.filter((g) => g.id !== group.id));
@@ -69,6 +68,7 @@ export default function ChatScreen() {
           setActiveGroup((current) => (current?.id === group.id ? null : current));
         },
       },
+      { text: 'Cancel', style: 'cancel' },
     ]);
   }, []);
 
